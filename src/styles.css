@@ -1,0 +1,171 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600&display=swap');
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #efe7da;
+}
+
+body {
+  font-family: 'Noto Serif JP', 'Songti SC', 'Yu Mincho', serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.stage {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+.stage__bg {
+  position: absolute;
+  inset: 0;
+  transition: background 560ms cubic-bezier(.22,.61,.36,1);
+}
+
+/* 一点纸纹噪点，压住大面积纯色的塑料感 */
+.stage__grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .16;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='160' height='160' filter='url(%23n)' opacity='.5'/></svg>");
+}
+
+.track {
+  position: relative;
+  display: flex;
+  height: 100%;
+  will-change: transform;
+  cursor: grab;
+}
+.track:active { cursor: grabbing; }
+
+.card {
+  position: relative;
+  flex: 0 0 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(18px, 4vh, 44px) 0 0;
+  user-select: none;
+  overflow: hidden;
+}
+
+/* 悬着的纸幅：上下都用渐层收边，避免出现一块硬白矩形，
+   顶边位置由 RoofCard 按屋檐下沿写进 --paper-top */
+.card__paper {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: var(--paper-top, 40%);
+  width: var(--paper-w, min(58vw, 820px));
+  bottom: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0) 0%,
+    var(--paper) 26%,
+    var(--paper) 72%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  pointer-events: none;
+}
+
+.card__head {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  color: var(--ink);
+  pointer-events: none;
+}
+.card__index {
+  display: block;
+  font-size: 12px;
+  letter-spacing: .42em;
+  opacity: .55;
+}
+.card__title {
+  margin: 4px 0 2px;
+  font-size: clamp(22px, 3.2vw, 38px);
+  font-weight: 600;
+  letter-spacing: .28em;
+  text-indent: .28em;
+}
+.card__sub {
+  margin: 0;
+  font-size: clamp(11px, 1.1vw, 13px);
+  letter-spacing: .2em;
+  opacity: .6;
+}
+
+.card__roof {
+  position: relative;
+  z-index: 1;
+  width: min(58vw, 820px);
+  margin-top: clamp(4px, 1.2vh, 14px);
+  pointer-events: none;
+  filter: drop-shadow(0 18px 26px rgba(30, 18, 10, .22));
+}
+.card__roof img {
+  display: block;
+  width: 100%;
+  height: auto;
+  -webkit-user-drag: none;
+}
+
+.card__canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.dots {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  z-index: 5;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(35, 22, 14, .26);
+  cursor: pointer;
+  transition: transform .3s, background .3s;
+}
+.dot.is-on {
+  background: rgba(35, 22, 14, .72);
+  transform: scale(1.5);
+}
+
+.hint {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: .22em;
+  color: rgba(35, 22, 14, .42);
+  z-index: 5;
+  pointer-events: none;
+}
+
+@media (max-width: 720px) {
+  .card__paper { width: 88vw; }
+  /* 窄屏下提示语会和圆点撞在一起 */
+  .hint { display: none; }
+  .card__roof { width: 92vw; }
+}
