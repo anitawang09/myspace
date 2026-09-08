@@ -104,20 +104,34 @@ for (const prof of PROFILES) {
   await page.screenshot({ path: `${OUT}/${prof.name}-3-open.png` })
 
   // ── 门内：等 3D 场景，读像素确认真的画出来了
-  await page.waitForSelector('.room__canvas canvas', { timeout: 15000 })
+  await page.waitForSelector('.room__canvas canvas', { timeout: 45000 }) // dev 首次编译 three 的分包可能很慢
   await page.waitForTimeout(3200)
   const room = await page.evaluate(() => {
     const cv = document.querySelector('.room__canvas canvas')
-    const r = window.__room ? window.__room() : { objects: 0, lit: 0 }
-    return { w: cv.width, h: cv.height, objects: r.objects, lit: r.lit }
+    const r = window.__room ? window.__room() : { objects: 0, lit: 0, hotspots: [], screen: {} }
+    return { w: cv.width, h: cv.height, ...r }
   })
   const shot = `${OUT}/${prof.name}-4-room.png`
   await page.screenshot({ path: shot })
-  console.log(`  门内  webgl=${room.w}x${room.h} 场景对象=${room.objects}`)
+  console.log(`  门内  webgl=${room.w}x${room.h} 场景对象=${room.objects} 热点=${room.hotspots.join(',')}`)
   if (room.objects < 10) fail(`3D 场景对象太少 ${room.objects}`)
+  for (const id of ['resume', 'gallery', 'travel']) {
+    if (!room.hotspots.includes(id)) fail(`缺少热点 ${id}`)
+  }
 
-  console.log(`        亮部占比=${room.lit}%`)
-  if (room.lit < 8) fail(`3D 房间几乎全黑（亮部 ${room.lit}%）`)
+  // 热点在画面里的位置：相机要在左上、纸在中间、卡与机票在右下
+  const S = room.screen
+  const inFrame = ([x, y]) => x > 0.02 && x < 0.98 && y > 0.02 && y < 0.98
+  console.log(
+    `        位置 相机=${S.gallery} 纸=${S.resume} 卡票=${S.travel}`,
+  )
+  for (const [id, p] of Object.entries(S)) if (!inFrame(p)) fail(`热点 ${id} 不在画面内 ${p}`)
+  if (S.gallery[0] > 0.45 || S.gallery[1] > 0.5) fail(`相机不在左上 ${S.gallery}`)
+  if (S.resume[0] < 0.25 || S.resume[0] > 0.75) fail(`纸不在画面中部 ${S.resume}`)
+  if (S.travel[0] < 0.55 || S.travel[1] < 0.5) fail(`卡与机票不在右下 ${S.travel}`)
+
+  console.log(`        亮部占比=${room.lit}% 平均亮度=${room.mean}`)
+  if (room.mean < 18) fail(`3D 房间几乎全黑（平均亮度 ${room.mean}）`)
 
   // ── 开门（计时路径）：不点任何东西，等它自己开
   await page.goto(`${URL}?t=3`, { waitUntil: 'domcontentloaded' })
@@ -145,9 +159,53 @@ for (const prof of PROFILES) {
     await page.waitForSelector('.room__canvas canvas')
     await page.waitForTimeout(3400)
     await page.screenshot({ path: `${OUT}/6-desk.png` })
-    await page.mouse.move(1200, 300)
-    await page.waitForTimeout(700)
-    await page.screenshot({ path: `${OUT}/7-desk-parallax.png` })
+
+    // 悬停与点击：逐个热点走一遍
+    const S2 = (await page.evaluate(() => window.__room())).screen
+    for (const id of ['resume', 'gallery', 'travel']) {
+      // 镜头有鼠标视差：移过去之后物体会挪位，按新坐标再校正一次
+      let [nx, ny] = S2[id]
+      await page.mouse.move(nx * prof.width, ny * prof.height)
+      await page.waitForTimeout(200)
+      ;[nx, ny] = (await page.evaluate(() => window.__room())).screen[id]
+      await page.mouse.move(nx * prof.width, ny * prof.height)
+      await page.waitForTimeout(420)
+      const label = await page.evaluate(() => {
+        const el = document.querySelector('.room__label')
+        return { on: el.classList.contains('is-on'), text: el.textContent.trim() }
+      })
+      if (!label.on) fail(`悬停 ${id} 没有出现标签`)
+      await page.screenshot({ path: `${OUT}/7-hover-${id}.png` })
+
+      await page.mouse.click(nx * prof.width, ny * prof.height)
+      await page.waitForTimeout(520)
+      const opened = await page.evaluate(() => {
+        const p = document.querySelector('.ov__panel')
+        return p ? p.querySelector('.ov__title').textContent : null
+      })
+      if (!opened) fail(`点击 ${id} 没有打开覆盖层`)
+      else console.log(`  点击  ${id.padEnd(7)} → 「${opened}」 标签「${label.text}」 ✓`)
+      await page.screenshot({ path: `${OUT}/8-open-${id}.png` })
+
+      await page.keyboard.press('Escape')
+      await page.waitForTimeout(360)
+      const closed = await page.evaluate(() => !document.querySelector('.ov__panel'))
+      if (!closed) fail(`${id} 的覆盖层 Esc 关不掉`)
+    }
+
+    // 拍立得横向滑轨确实能滑
+    await page.goto(`${URL}?open=gallery`, { waitUntil: 'networkidle' })
+    await page.waitForSelector('.rail')
+    await page.waitForTimeout(600)
+    const scrolled = await page.evaluate(async () => {
+      const rail = document.querySelector('.rail')
+      const before = rail.scrollLeft
+      rail.scrollLeft = 400
+      await new Promise((r) => setTimeout(r, 60))
+      return { before, after: rail.scrollLeft, overflow: rail.scrollWidth > rail.clientWidth }
+    })
+    if (!scrolled.overflow || scrolled.after <= scrolled.before) fail('拍立得滑轨滑不动')
+    await page.screenshot({ path: `${OUT}/9-gallery-scrolled.png` })
   }
 
   await page.close()
