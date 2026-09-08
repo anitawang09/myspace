@@ -6,7 +6,7 @@ html, body, #root {
   height: 100%;
   margin: 0;
   overflow: hidden;
-  background: #efe7da;
+  background: #1c1719;
 }
 
 body {
@@ -19,17 +19,37 @@ body {
   height: 100%;
   width: 100%;
   overflow: hidden;
-  touch-action: pan-y;
 }
 
-.stage__bg {
+/* ───────────────── 门外 ───────────────── */
+
+.gate {
   position: absolute;
   inset: 0;
-  transition: background 560ms cubic-bezier(.22,.61,.36,1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(18px, 4vh, 44px) 0 0;
+  user-select: none;
+  overflow: hidden;
+  cursor: pointer;
+  transform-origin: var(--zoom-origin, 50% 60%);
 }
 
-/* 一点纸纹噪点，压住大面积纯色的塑料感 */
-.stage__grain {
+/* 推门而入：以门口为原点把镜头推进去 */
+.gate.is-zooming {
+  transform: scale(3.4);
+  opacity: 0;
+  transition: transform 1100ms cubic-bezier(.5,0,.75,0), opacity 1100ms ease-in 260ms;
+}
+
+.gate__bg {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 90% at 50% -10%, var(--from) 0%, var(--from) 32%, var(--to) 100%);
+}
+
+.gate__grain {
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -38,134 +58,191 @@ body {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='160' height='160' filter='url(%23n)' opacity='.5'/></svg>");
 }
 
-.track {
-  position: relative;
-  display: flex;
-  height: 100%;
-  will-change: transform;
-  cursor: grab;
-}
-.track:active { cursor: grabbing; }
-
-.card {
-  position: relative;
-  flex: 0 0 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: clamp(18px, 4vh, 44px) 0 0;
-  user-select: none;
-  overflow: hidden;
-}
-
-/* 悬着的纸幅：上下都用渐层收边，避免出现一块硬白矩形，
-   顶边位置由 RoofCard 按屋檐下沿写进 --paper-top */
-.card__paper {
+/* 檐下的墙身，门嵌在它上面 */
+.gate__wall {
   position: absolute;
   left: 50%;
-  transform: translateX(-50%);
-  top: var(--paper-top, 40%);
-  width: var(--paper-w, min(58vw, 820px));
+  top: var(--wall-top, 60%);
+  width: var(--wall-w, 50%);
   bottom: 0;
+  transform: translateX(-50%);
+  z-index: 1;
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0) 0%,
-    var(--paper) 26%,
-    var(--paper) 72%,
-    rgba(255, 255, 255, 0) 100%
+    rgba(40, 33, 50, .30) 0%,
+    rgba(40, 33, 50, .20) 46%,
+    rgba(40, 33, 50, 0) 100%
   );
+  box-shadow: inset 0 14px 22px -12px rgba(20, 14, 26, .55);
   pointer-events: none;
 }
 
-.card__head {
-  position: relative;
+/* 帘后的拉门 */
+.doorway {
+  position: absolute;
+  left: 50%;
+  top: var(--door-top, 60%);
+  width: var(--door-w, 40%);
+  height: var(--door-h, 40%);
+  transform: translateX(-50%);
   z-index: 2;
+  overflow: hidden;
+  --cell: calc(var(--door-w, 400px) / 9);
+  --lat: #7b5636;
+}
+
+/* 门内：拉开前是一片深色，拉开后暖光漫出来 */
+.doorway__room {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, #17110e 0%, #241a13 55%, #12100f 100%);
+}
+
+.doorway__glow {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background:
+    radial-gradient(80% 60% at 50% 78%, var(--glow) 0%, rgba(243,201,138,.35) 42%, rgba(0,0,0,0) 78%);
+  transition: opacity 1700ms ease-out 220ms;
+}
+.gate.is-open .doorway__glow { opacity: .95; }
+
+.shoji {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50.4%;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 var(--cell), var(--lat) var(--cell) calc(var(--cell) + 3px)),
+    repeating-linear-gradient(0deg, transparent 0 var(--cell), var(--lat) var(--cell) calc(var(--cell) + 3px)),
+    linear-gradient(180deg, #f8f1e0 0%, #e9dcc2 100%);
+  box-shadow: inset 0 0 0 7px #6b4a30, 0 6px 24px rgba(20, 12, 8, .35);
+  transition: transform 1900ms cubic-bezier(.62,.02,.24,1);
+}
+.shoji--l { left: 0; }
+.shoji--r { right: 0; }
+.gate.is-open .shoji--l { transform: translateX(-101%); }
+.gate.is-open .shoji--r { transform: translateX(101%); }
+
+/* 门框（鴨居・敷居・柱） */
+.doorway__frame {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 12px solid #6b4a30;
+  border-top-width: 18px;
+  box-shadow: inset 0 0 26px rgba(20, 12, 6, .5);
+}
+
+.gate__head {
+  position: relative;
+  z-index: 4;
   text-align: center;
   color: var(--ink);
   pointer-events: none;
 }
-.card__index {
-  display: block;
-  font-size: 12px;
-  letter-spacing: .42em;
-  opacity: .55;
-}
-.card__title {
+.gate__index { display: block; font-size: 12px; letter-spacing: .42em; opacity: .55; }
+.gate__title {
   margin: 4px 0 2px;
   font-size: clamp(22px, 3.2vw, 38px);
   font-weight: 600;
   letter-spacing: .28em;
   text-indent: .28em;
 }
-.card__sub {
-  margin: 0;
-  font-size: clamp(11px, 1.1vw, 13px);
-  letter-spacing: .2em;
-  opacity: .6;
-}
+.gate__sub { margin: 0; font-size: clamp(11px, 1.1vw, 13px); letter-spacing: .2em; opacity: .6; }
 
-.card__roof {
+.gate__roof {
   position: relative;
   z-index: 1;
-  width: min(58vw, 820px);
+  width: min(48vw, 700px);
   margin-top: clamp(4px, 1.2vh, 14px);
   pointer-events: none;
   filter: drop-shadow(0 18px 26px rgba(30, 18, 10, .22));
 }
-.card__roof img {
-  display: block;
-  width: 100%;
-  height: auto;
-  -webkit-user-drag: none;
-}
+.gate__roof img { display: block; width: 100%; height: auto; -webkit-user-drag: none; }
 
-.card__canvas {
+.gate__canvas {
   position: absolute;
   inset: 0;
   z-index: 3;
   pointer-events: none;
 }
 
-.dots {
+.gate__foot {
   position: absolute;
   left: 50%;
-  bottom: 22px;
+  bottom: 26px;
   transform: translateX(-50%);
+  z-index: 5;
   display: flex;
-  gap: 12px;
-  z-index: 5;
-}
-.dot {
-  width: 8px;
-  height: 8px;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: rgba(35, 22, 14, .26);
-  cursor: pointer;
-  transition: transform .3s, background .3s;
-}
-.dot.is-on {
-  background: rgba(35, 22, 14, .72);
-  transform: scale(1.5);
-}
-
-.hint {
-  position: absolute;
-  right: 20px;
-  bottom: 20px;
-  margin: 0;
-  font-size: 11px;
-  letter-spacing: .22em;
-  color: rgba(35, 22, 14, .42);
-  z-index: 5;
+  align-items: baseline;
+  gap: 10px;
+  color: var(--ink);
+  opacity: .62;
+  transition: opacity 600ms ease;
   pointer-events: none;
 }
+.gate__foot.is-hidden { opacity: 0; }
+.gate__count {
+  font-size: 26px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .04em;
+}
+.gate__hint { font-size: 11px; letter-spacing: .22em; }
+
+/* ───────────────── 门内 ───────────────── */
+
+.room {
+  position: absolute;
+  inset: 0;
+  animation: room-in 1200ms ease-out both;
+}
+@keyframes room-in {
+  from { opacity: 0; transform: scale(1.08); }
+  to { opacity: 1; transform: none; }
+}
+
+.room__canvas { position: absolute; inset: 0; }
+.room__canvas canvas { display: block; }
+
+.room__caption {
+  position: absolute;
+  left: 34px;
+  bottom: 30px;
+  color: #f4e6cd;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 900ms ease, transform 900ms ease;
+  pointer-events: none;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, .6);
+}
+.room__caption.is-on { opacity: .9; transform: none; }
+.room__caption h2 {
+  margin: 0;
+  font-size: clamp(20px, 2.4vw, 30px);
+  font-weight: 600;
+  letter-spacing: .3em;
+}
+.room__caption p { margin: 4px 0 0; font-size: 11px; letter-spacing: .24em; opacity: .7; }
 
 @media (max-width: 720px) {
-  .card__paper { width: 88vw; }
-  /* 窄屏下提示语会和圆点撞在一起 */
-  .hint { display: none; }
-  .card__roof { width: 92vw; }
+  .gate__roof { width: 92vw; }
+  .room__caption { left: 20px; bottom: 22px; }
+}
+
+/* three.js 分包加载时的过渡底色 */
+.room__loading {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(70% 60% at 50% 70%, #3a2b1e 0%, #1a1512 100%);
+}
+
+/* 触屏上别提"鼠标" */
+.only-touch { display: none; }
+@media (pointer: coarse) {
+  .only-mouse { display: none; }
+  .only-touch { display: inline; }
 }

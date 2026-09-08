@@ -33,6 +33,7 @@ export class Curtain {
     this.colGap = 26
     this.time = 0
     this.diag = null
+    this.burst = null
   }
 
   /**
@@ -101,6 +102,14 @@ export class Curtain {
     return this.ropes.length > 0
   }
 
+  /**
+   * 一阵风：拉门推开时门内的气流把帘子吹开。
+   * 只给力，不动约束，绳子照常自己荡回来。
+   */
+  gust(x, y, power = 1) {
+    this.burst = { x, y, power, life: 1 }
+  }
+
   /** 预热：先跑若干步让帘子自然垂下，切卡时不会看到“掉下来”的突兀过程 */
   settle(steps = 240) {
     for (let i = 0; i < steps; i++) this.step(null, 16.7)
@@ -112,6 +121,12 @@ export class Curtain {
     const { w, h } = this.bounds
     const t = this.time
     const R = PHYSICS.POINTER_RADIUS
+
+    const burst = this.burst
+    if (burst) {
+      burst.life -= dt * 0.016
+      if (burst.life <= 0) this.burst = null
+    }
 
     for (const rope of this.ropes) {
       const { ps } = rope
@@ -125,8 +140,18 @@ export class Curtain {
       for (let i = 1; i < ps.length; i++) {
         const p = ps[i]
         const depth = i / ps.length // 越靠下摆幅越大
-        const wind = (w1 * 0.8 + w2 * 0.4) * PHYSICS.FORCE * (0.2 + depth * 0.8)
-        integrate(p, wind * dt, PHYSICS.GRAVITY * dt)
+        let ax = (w1 * 0.8 + w2 * 0.4) * PHYSICS.FORCE * (0.2 + depth * 0.8)
+        let ay = PHYSICS.GRAVITY
+        if (burst && burst.life > 0) {
+          const bx = p.x - burst.x
+          const by = p.y - burst.y
+          const bd = Math.hypot(bx, by) || 1e-6
+          // 近门口吹得最狠，越远越弱；带一点上掀
+          const fall = Math.max(0, 1 - bd / 460) * burst.life * burst.power
+          ax += (bx / bd) * PHYSICS.FORCE * 9 * fall
+          ay -= PHYSICS.GRAVITY * 0.45 * fall
+        }
+        integrate(p, ax * dt, ay * dt)
       }
     }
 
