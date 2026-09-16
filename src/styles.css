@@ -383,17 +383,49 @@ body {
 }
 .cv__section { margin-top: 30px; }
 .cv__section h4 {
-  margin: 0 0 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0 0 16px;
   padding-bottom: 8px;
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: .26em;
   font-weight: 600;
   border-bottom: 1px solid rgba(150, 140, 170, .18);
 }
-.cv__item { display: flex; gap: 20px; margin-bottom: 16px; }
+.cv__section h4 span {
+  font-size: 10px;
+  letter-spacing: .28em;
+  font-weight: 400;
+  color: rgba(93, 242, 255, .72);
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  text-transform: uppercase;
+}
+
+.cv__body { min-width: 0; }
+
+/* 技能标签 */
+.cv__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.cv__tags li {
+  padding: 3px 9px 4px;
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  color: rgba(214, 232, 240, .82);
+  background: rgba(93, 242, 255, .07);
+  border: 1px solid rgba(93, 242, 255, .2);
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+.cv__item { display: flex; gap: 20px; margin-bottom: 22px; }
 .cv__period {
   flex: none;
-  width: 118px;
+  width: 132px;
   margin: 2px 0 0;
   font-size: 11px;
   letter-spacing: .1em;

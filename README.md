@@ -93,7 +93,8 @@ npm run build
 
 ## 内容怎么填
 
-- **履历** —— 改 `src/data/resume.js`，覆盖层会照着排版。
+- **履历** —— 内容在 `src/data/resume.js`（正文英文 / 栏目标题日英并置）。
+  每条经历支持 `notes`（要点）与 `skills`（技能标签），技能栏用 `groups` 排标签。
 - **摄影** —— 图片放进 `public/photos/`，在 `src/data/photos.js` 把 `src` 换成路径；
   没有 `src` 时显示占位色块，画廊结构不变。
 - **足迹** —— `src/overlays/Footprints.jsx` 目前只接通了入口，

@@ -18,26 +18,51 @@ export default function Resume({ onClose }) {
             ))}
           </ul>
         </header>
+
         {RESUME.sections.map((sec) => (
-          <section key={sec.heading} className="cv__section">
-            <h4>{sec.heading}</h4>
-            {sec.items.map((it, i) => (
+          <section key={sec.en} className="cv__section">
+            <h4>
+              {sec.jp}
+              <span>{sec.en}</span>
+            </h4>
+
+            {sec.items?.map((it, i) => (
               <div className="cv__item" key={i}>
                 {it.period && <p className="cv__period">{it.period}</p>}
-                <div>
+                <div className="cv__body">
                   {(it.role || it.org) && (
                     <p className="cv__role-line">
                       <strong>{it.role}</strong>
                       {it.org && <span> · {it.org}</span>}
                     </p>
                   )}
-                  {it.notes.length > 0 && (
+                  {it.notes?.length > 0 && (
                     <ul className="cv__notes">
                       {it.notes.map((n, j) => (
                         <li key={j}>{n}</li>
                       ))}
                     </ul>
                   )}
+                  {it.skills?.length > 0 && (
+                    <ul className="cv__tags">
+                      {it.skills.map((s) => (
+                        <li key={s}>{s}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {sec.groups?.map((g) => (
+              <div className="cv__item" key={g.label}>
+                <p className="cv__period">{g.label}</p>
+                <div className="cv__body">
+                  <ul className="cv__tags">
+                    {g.tags.map((t) => (
+                      <li key={t}>{t}</li>
+                    ))}
+                  </ul>
                 </div>
               </div>
             ))}
