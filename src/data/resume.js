@@ -79,6 +79,36 @@ export const RESUME = {
       ],
     },
     {
+      jp: 'プロジェクト',
+      en: 'Projects',
+      projects: [
+        {
+          title: 'Investment Awareness for Sustainable Shipping',
+          partner: 'with MARIN',
+          description:
+            'Analysed ROI and cost-saving datasets and built an analysis tool to support investment decision-making under EU energy regulatory and financial uncertainty from propulsion energy.',
+          link: 'https://github.com/lotjas/Popeyes',
+          linkLabel: 'Project repository',
+        },
+        {
+          title: 'Strategic Communication Platform',
+          partner: 'with Amsterdam-Amstelland Fire Department',
+          description:
+            'Designed a digital platform and communication strategy applying behavioural theory to drive cross-organisational collaboration.',
+          link: 'https://www.brandweer.nl/amsterdam-amstelland/werken-bij/',
+          linkLabel: 'Partner organisation',
+        },
+        {
+          title: 'Voices in the News',
+          partner: 'Independent research',
+          description:
+            'Asked to what extent speaker gender, institutional status and topic domain predict quotation prominence and the linguistic construction of authority in news reporting. Built a pipeline for quote extraction, NER-based speaker identification, name-based gender inference and topic-domain classification to drive attribution-verb analysis.',
+          link: 'https://github.com/anitawang09/voices_in_the_news_project',
+          linkLabel: 'Project repository',
+        },
+      ],
+    },
+    {
       jp: '学歴',
       en: 'Education',
       items: [

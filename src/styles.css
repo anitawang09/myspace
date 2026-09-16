@@ -422,6 +422,48 @@ body {
   border: 1px solid rgba(93, 242, 255, .2);
   font-family: 'Helvetica Neue', Arial, sans-serif;
 }
+/* 项目卡片 */
+.cv__project {
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  background: rgba(255, 255, 255, .025);
+  border: 1px solid rgba(150, 140, 170, .16);
+  border-left: 2px solid rgba(93, 242, 255, .4);
+}
+.cv__project-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ece6dd;
+}
+.cv__project-title span {
+  margin-left: 9px;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: .04em;
+  color: rgba(214, 232, 240, .5);
+}
+.cv__project-desc {
+  margin: 7px 0 0;
+  font-size: 12.5px;
+  line-height: 1.85;
+  color: rgba(236, 230, 221, .72);
+}
+.cv__project-link {
+  display: inline-block;
+  margin-top: 9px;
+  font-size: 11px;
+  letter-spacing: .04em;
+  color: rgba(93, 242, 255, .82);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(93, 242, 255, .3);
+  transition: color .18s, border-color .18s;
+}
+.cv__project-link:hover {
+  color: #dff6ff;
+  border-color: rgba(93, 242, 255, .7);
+}
+
 .cv__item { display: flex; gap: 20px; margin-bottom: 22px; }
 .cv__period {
   flex: none;

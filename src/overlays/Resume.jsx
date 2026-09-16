@@ -54,6 +54,21 @@ export default function Resume({ onClose }) {
               </div>
             ))}
 
+            {sec.projects?.map((p) => (
+              <div className="cv__project" key={p.title}>
+                <p className="cv__project-title">
+                  {p.title}
+                  <span>{p.partner}</span>
+                </p>
+                <p className="cv__project-desc">{p.description}</p>
+                {p.link && (
+                  <a className="cv__project-link" href={p.link} target="_blank" rel="noreferrer">
+                    {p.linkLabel || p.link} ↗
+                  </a>
+                )}
+              </div>
+            ))}
+
             {sec.groups?.map((g) => (
               <div className="cv__item" key={g.label}>
                 <p className="cv__period">{g.label}</p>
