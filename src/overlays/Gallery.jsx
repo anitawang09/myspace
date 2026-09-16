@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef } from 'react'
 import Overlay from './Overlay.jsx'
 import { PHOTOS } from '../data/photos.js'
+import { assetUrl } from '../lib/assetUrl.js'
+
+// photos.js 里写 '/photos/xxx.jpg' 就行——这里补上部署时的子路径前缀。
+// 完整 URL（http/https，比如外链图床）原样放行，不经过这层。
+const photoSrc = (src) => (src && !/^https?:\/\//.test(src) ? assetUrl(src) : src)
 
 /** 拍立得画廊：横向滑动。拖拽 / 滚轮 / 左右方向键都能推 */
 export default function Gallery({ onClose }) {
@@ -59,7 +64,7 @@ export default function Gallery({ onClose }) {
               className="polaroid__img"
               style={
                 p.src
-                  ? { backgroundImage: `url(${p.src})` }
+                  ? { backgroundImage: `url(${photoSrc(p.src)})` }
                   : { background: `linear-gradient(160deg, ${p.tone[0]}, ${p.tone[1]})` }
               }
             >

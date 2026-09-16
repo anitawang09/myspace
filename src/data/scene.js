@@ -1,7 +1,9 @@
 // 只保留千鳥破風。这是整个入口场景的配置来源。
+import { assetUrl } from '../lib/assetUrl.js'
+
 export const SCENE = {
   id: 'chidori',
-  roof: '/roofs/chidori.svg',
+  roof: assetUrl('roofs/chidori.svg'),
   title: '千鳥破風',
   subtitle: 'ちどりはふ · 墨紫の宵',
   // 15 秒后拉门自动打开
