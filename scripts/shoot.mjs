@@ -29,6 +29,11 @@ for (const prof of PROFILES) {
     deviceScaleFactor: prof.dsf,
   })
   page.on('pageerror', (e) => fail(`pageerror: ${e.message}`))
+  // 这台沙箱里的 headless Chromium 是软件渲染（SwiftShader 这一类），
+  // 页面上同时有好几块 WebGL/2D canvas 在跑时，合成一帧截图可能要好几秒——
+  // 稳定但慢，不是卡死。默认 30s 在这里太紧，调宽松点；真卡住了
+  // 不会无限等，只是不会被这台机器的渲染速度误判成坏了
+  page.setDefaultTimeout(60000)
   console.log(`\n▌${prof.name}  ${prof.width}x${prof.height} @${prof.dsf}x`)
 
   // ── 门外：先把自动开门推远，从容检查闭门状态（开门另用点击与计时两条路各验一次）
@@ -41,7 +46,10 @@ for (const prof of PROFILES) {
     const gate = document.querySelector('.gate')
     const img = gate.querySelector('img').getBoundingClientRect()
     const door = gate.querySelector('.doorway').getBoundingClientRect()
-    const cv = gate.querySelector('canvas')
+    // 具体到 .gate__canvas：门外现在还有一块 LiquidEther 的 WebGL canvas，
+    // 通配符 'canvas' 会先抓到它——而一块 canvas 一旦绑过 webgl 上下文，
+    // 再 getContext('2d') 永远拿 null，不是哪次运行的偶发问题
+    const cv = gate.querySelector('.gate__canvas')
     const root = gate.getBoundingClientRect()
     const z = (el) => +getComputedStyle(el).zIndex
     return {
@@ -54,7 +62,7 @@ for (const prof of PROFILES) {
     }
   })
   const ink = await page.evaluate(() => {
-    const cv = document.querySelector('.gate canvas')
+    const cv = document.querySelector('.gate__canvas')
     const ctx = cv.getContext('2d', { willReadFrequently: true })
     const { data } = ctx.getImageData(0, 0, cv.width, cv.height)
     const scale = cv.width / parseFloat(cv.style.width)
@@ -89,6 +97,26 @@ for (const prof of PROFILES) {
   if (!geo.order) fail('拉门没有排在帘子后面')
   if (geo.doorTop < geo.roofBottom - 60) fail(`门顶(${geo.doorTop}) 离檐口(${geo.roofBottom}) 太远`)
 
+  // ── 背景的 LiquidEther：是懒加载的，给它一点时间挂上。
+  // 验证"真的在动"不能用 gl.readPixels 在渲染循环外去读——WebGL 默认不保留
+  // 绘制缓冲，外部读到的永远是清空后的 0（Room.jsx 的亮度探针也踩过这个坑，
+  // 那边是在渲染循环内部采样绕开的）。这里换成走合成器的真实截图对比，
+  // 测的就是用户实际看到的画面，不会有这层误报。
+  await page.waitForSelector('.gate__liquid canvas', { timeout: 10000 })
+  const liquidClip = await page.evaluate(() => {
+    const r = document.querySelector('.gate__liquid').getBoundingClientRect()
+    return { x: Math.round(r.x + r.width * 0.3), y: Math.round(r.y + r.height * 0.35), width: 200, height: 160 }
+  })
+  // 空闲自动漂移有 2200ms 的 autoResumeDelay（见 Gate.jsx），没过这个坎
+  // 它根本不会动——等够这段时间再截第一张，不然测的是"还没启动"而不是"坏了"
+  await page.waitForTimeout(2600)
+  const liquidA = (await page.screenshot({ clip: liquidClip })).toString('base64')
+  await page.waitForTimeout(1800)
+  const liquidB = (await page.screenshot({ clip: liquidClip })).toString('base64')
+  const liquidMoved = liquidA !== liquidB
+  console.log(`  背景  LiquidEther canvas 存在，1.8s 间隔画面${liquidMoved ? '有变化' : '没有变化'}`)
+  if (!liquidMoved) fail('LiquidEther 背景看起来是静止的（空闲自动漂移没有生效？）')
+
   // ── 开门（点击路径）：抓滑动中与全开
   await page.mouse.click(prof.width / 2, prof.height * 0.28)
   await page.waitForFunction(() => document.querySelector('.gate.is-open'), null, { timeout: 5000 })
@@ -97,6 +125,8 @@ for (const prof of PROFILES) {
     const l = document.querySelector('.shoji--l')
     return l ? Math.round(new DOMMatrix(getComputedStyle(l).transform).m41) : 0
   })
+  // 这一刻拉门过渡 + 帘子的阵风物理 + 背景的 LiquidEther 三路同时在跑，
+  // 合成一帧截图尤其慢——页面级默认超时已经调宽，这里不用再单独标注
   await page.screenshot({ path: `${OUT}/${prof.name}-2-opening.png` })
   if (mid >= -2) fail(`拉门没在滑动（左扇位移 ${mid}px）`)
 

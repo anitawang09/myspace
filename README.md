@@ -3,7 +3,8 @@
 Vite + React 19 + three.js。两幕：
 
 1. **门外** —— 千鳥破風的屋顶，檐下垂着 Canvas 手写的 Verlet 链式字帘，
-   帘后是一道日式拉门。**15 秒后门自动拉开**（等不及就点一下），
+   帘后是一道日式拉门。背景是一层很淡的 WebGL 墨色流体，围着字帘那一片
+   慢慢漂，光标划过会被搅出涟漪。**15 秒后门自动拉开**（等不及就点一下），
    门内的气流把帘子吹开，镜头从门口推进去。
 2. **门内** —— three.js 的 3D 书斋（夜色 + 窗外霓虹）。桌上只留一盏行灯和一张纸，
    房间里三样东西可以点开：
@@ -31,6 +32,7 @@ npm run build
 | --- | --- |
 | `src/App.jsx` | 两幕切换；three.js 分包，门外那幕不为它等待 |
 | `src/scenes/Gate.jsx` | 门外：轮廓扫描 / 建帘 / 拉门 / 倒计时 / 开门阵风 |
+| `src/effects/LiquidEther.jsx` | 门外背景的 WebGL 墨色流体（[React Bits](https://reactbits.dev) 组件，懒加载） |
 | `src/scenes/Room.jsx` | 门内：场景组装、光照、后期、射线拾取 |
 | `src/three/textures.js` | 程序化贴图：榻榻米 / 障子 / 土壁 / 木纹 / 卡票 / 机身 |
 | `src/three/props.js` | 物件：文机、行灯、纸、Olympus、卡与机票、搁板 |
@@ -74,6 +76,27 @@ npm run build
 素材（`scripts/gen-roofs.mjs`）刻意保证屋顶底缘是每一列最靠下的不透明像素：
 层间壁、破风、擬宝珠都画在下层轮廓之上，不会污染 Profile。
 
+## 入口背景（LiquidEther）
+
+门外的背景是 [React Bits](https://reactbits.dev) 的 `LiquidEther`——WebGL 流体模拟
+（平流 / 泊松压力求解），速度场按大小映射到一条调色板上。原样搬运，只去掉了
+Next.js 的 `'use client'` 指令。调的时候踩了两个坑：
+
+- **闲置自动漂移不能把调色板推到最暖的一头**：`SCENE.palette.liquid`
+  一开始只给了 4 档（墨黑 → 墨紫 → `to` 紫 → 门灯金），结果空闲时的自动
+  漂移力道就能把速度场推到末档，标题背后无端冒出一团金色光斑。改成
+  8 档、把金色压到速度场的最末端，同时把 `mouseForce`/`autoIntensity`
+  调低，闲置时只在墨黑到墨紫之间游走，真被划过去搅动得很急才泛暖。
+- **它只是背景，别为了"看起来更稠"多付一整圈粘性迭代的钱**：
+  `isViscous` 会在每帧再跑一遍 `iterationsViscous` 次 Gauss-Seidel 求解，
+  是这类流体模拟里最贵的一项。背景效果用不上这么厚重的质感，关掉之后
+  省下几乎一半的每帧迭代。
+
+像三维场景一样走懒加载（`React.lazy` + `Suspense`）：`three` 不进首屏的
+入口 bundle，门外那幕的关键路径（标题 / 屋顶 / 字帘 / 倒计时）不用等它，
+背景效果是加载完才"浮现"的增强，不是阻塞渲染的必需品。
+`prefers-reduced-motion: reduce` 时直接不挂载。
+
 ## 踩过的坑（都已在代码里注释）
 
 - **逐字 `setTransform` 会覆盖 DPR 变换**，高分屏上字缩到左上角、和绳子分家。
@@ -90,6 +113,16 @@ npm run build
   并且在整幅画面上撒 24 个采样点 —— 只读某个角落会被地板或阴影带偏，
   高分屏下同样的像素数覆盖的画面区域还会缩水。
 - **竖屏机位要后撤**：水平视野窄得多，不按宽高比调整书桌两头会被切掉。
+- **页面里不止一块 canvas 时，通配符选择器会抓错**：加了 LiquidEther 之后
+  `.gate` 里同时有它的 WebGL canvas 和字帘的 2D canvas，`shoot.mjs` 原来用
+  `'.gate canvas'`（取第一个）去拿字帘画布，现在先抓到的是 LiquidEther
+  的——而一块 canvas 一旦绑过 `webgl` 上下文，再 `getContext('2d')`
+  永远是 `null`，不是哪次运行的偶发问题。选择器改成具体的
+  `.gate__canvas`，两块 canvas 不会再抢。
+- **验证 WebGL 内容"真的在动"不能在渲染循环外 `readPixels`**：同一个坑
+  Room 的亮度探针已经踩过一次（见上），这次又在测试脚本里踩了一遍——
+  默认不保留绘制缓冲，外部异步读到的永远是清空后的 0。换成走合成器的
+  真实截图前后对比，测的就是用户实际看到的画面。
 
 ## 内容怎么填
 
@@ -123,4 +156,12 @@ npm run build
 
 **门内** WebGL 画布尺寸、场景对象数，以及渲染循环内采样的亮部占比（防止一片死黑）。
 
+**背景** LiquidEther 的 canvas 是否挂上了，等过 `autoResumeDelay` 之后
+前后两张截图是否真的不一样（证明闲置自动漂移在生效，而不是一帧静止画面）。
+
 截图输出到 `shots/`：闭门、开门中、全开、书斋、光标推帘、书桌视差。
+
+这台沙箱的 headless Chromium 是软件渲染，页面上多块 canvas 同时动着的时候
+合成一帧截图可能要好几秒——稳定但慢，不是卡死。`shoot.mjs` 给每个 page
+设了 60s 的默认超时（`page.setDefaultTimeout`），别被这台机器的渲染速度
+吓到以为是测试写坏了。

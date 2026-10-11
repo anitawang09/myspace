@@ -1,11 +1,20 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Curtain } from '../physics/curtain.js'
 import { scanProfile } from '../lib/profile.js'
 import { SCENE } from '../data/scene.js'
 
+// 门外这一幕是关键路径——标题、屋顶、字帘、倒计时都得尽快画出来。
+// 懒加载背景的流体效果，别让 three.js 拖慢首屏（和 Room 场景同一个套路）。
+const LiquidEther = lazy(() => import('../effects/LiquidEther.jsx'))
+
 const FONT = (size) => `${size}px "Noto Serif JP","Songti SC","Yu Mincho",serif`
 const DOOR_SLIDE_MS = 1900 // 与 styles.css 里 .shoji 的过渡时长保持一致
 const ZOOM_MS = 1100
+
+// 系统关了动态效果就别硬塞一个全程流动的背景；只读一次，这个偏好
+// 在一个会话里基本不会变，不值得为它再订阅 change 事件。
+const prefersReducedMotion =
+  typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 /**
  * 入口：千鳥破風 + Verlet 字帘，帘后是一道日式拉门。
@@ -196,6 +205,31 @@ export default function Gate({ onEnter }) {
       onClick={open}
     >
       <div className="gate__bg" />
+      {!prefersReducedMotion && (
+        <Suspense fallback={null}>
+          <LiquidEther
+            className="gate__liquid"
+            style={{ pointerEvents: 'none' }}
+            colors={SCENE.palette.liquid}
+            lightMode={false}
+            // 力道比示例默认值收着点：空闲的自动漂移不该把速度场推到
+            // 调色板最暖的那一头，那样标题背后会无端冒出一团金色光斑
+            mouseForce={9}
+            cursorSize={90}
+            // 它只是背景装饰，别为了"看起来更稠"多付一整圈粘性迭代的钱——
+            // isViscous 会在每帧再跑一遍 iterationsViscous 次求解，
+            // 在低端设备/软件渲染上这是最贵的一项，关掉之后默认的平流已经够看
+            resolution={0.3}
+            iterationsPoisson={20}
+            autoDemo
+            autoSpeed={0.35}
+            autoIntensity={1}
+            takeoverDuration={0.4}
+            autoResumeDelay={2200}
+            autoRampDuration={1.2}
+          />
+        </Suspense>
+      )}
       <div className="gate__grain" />
       <div className="gate__wall" />
 

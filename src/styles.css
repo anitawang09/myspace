@@ -49,6 +49,19 @@ body {
   background: radial-gradient(120% 90% at 50% -10%, var(--from) 0%, var(--from) 32%, var(--to) 100%);
 }
 
+/* 在渐变底色之上流动的墨：WebGL 流体模拟，速度场映射到 SCENE.palette.liquid。
+   只在速度场最终"清零"的空白处透出 gate__bg，别的地方都靠这层自己画。
+   遮罩的可见区压低、压淡，围着字帘那一片走，别正对标题——
+   不然哪怕调色板再收敛，字也会被一层流动的东西衬得晃眼。 */
+.gate__liquid {
+  position: absolute !important;
+  inset: 0;
+  z-index: 0;
+  opacity: .55;
+  mask-image: radial-gradient(110% 80% at 50% 62%, #000 45%, transparent 100%);
+  -webkit-mask-image: radial-gradient(110% 80% at 50% 62%, #000 45%, transparent 100%);
+}
+
 .gate__grain {
   position: absolute;
   inset: 0;
