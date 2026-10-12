@@ -17,12 +17,14 @@ const prefersReducedMotion =
   typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 /**
- * 入口：千鳥破風 + Verlet 字帘，帘后是一道日式拉门。
+ * 入口：鳳凰堂 + Verlet 字帘，中堂正面的开间里是一道日式拉门。
  * 15 秒后门自动拉开 —— 门内的气流把帘子吹开，镜头推进门里。
  */
 export default function Gate({ onEnter }) {
   const rootRef = useRef(null)
   const imgRef = useRef(null)
+  const eavesRef = useRef(null)
+  const headRef = useRef(null)
   const canvasRef = useRef(null)
   const curtainRef = useRef(null)
   const doorRef = useRef({ x: 0, y: 0 }) // 门口中心，阵风的起点
@@ -30,7 +32,8 @@ export default function Gate({ onEnter }) {
   const rafRef = useRef(0)
   const enteredRef = useRef(false)
 
-  const [loaded, setLoaded] = useState(false)
+  const [ready, setReady] = useState({ img: false, eaves: false })
+  const loaded = ready.img && ready.eaves
   const [opening, setOpening] = useState(false)
   const [zooming, setZooming] = useState(false)
 
@@ -44,15 +47,17 @@ export default function Gate({ onEnter }) {
   const layout = useCallback(() => {
     const root = rootRef.current
     const img = imgRef.current
+    const eaves = eavesRef.current
     const canvas = canvasRef.current
-    if (!root || !img || !canvas || !img.complete) return false
+    if (!root || !img || !eaves || !canvas || !img.complete || !eaves.complete) return false
 
     const rootRect = root.getBoundingClientRect()
     const imgRect = img.getBoundingClientRect()
     // 高度测量失败时不建帘，否则字数按 0 高度算会漏出大片空隙
     if (rootRect.height < 160 || imgRect.width < 40) return false
 
-    const profile = scanProfile(img)
+    // 扫的是只有屋顶的那张 mask：整栋建筑每列最靠下的不透明像素是石台
+    const profile = scanProfile(eaves)
     if (!profile) return false
 
     const roofRect = {
@@ -62,21 +67,24 @@ export default function Gate({ onEnter }) {
       h: imgRect.height,
     }
 
-    // 门开在檐口正下方，是这座建筑的入口。
-    // 底下留一段余地，好让敷居（下槛）和倒计时都露在画面里，
-    // 不然门会被视口下缘齐齐切掉。
-    const doorW = Math.round(roofRect.w * 0.52)
-    const doorTop = Math.round(roofRect.y + roofRect.h - 26)
-    const doorH = Math.max(150, Math.round(rootRect.height - doorTop - 62))
-    root.style.setProperty('--door-w', `${doorW}px`)
+    // 门就是中堂正面那一间：烘焙时把开间的四角投影到图上，存成归一化矩形
+    const d = SCENE.temple.door
+    const doorX = Math.round(roofRect.x + d.x0 * roofRect.w)
+    const doorTop = Math.round(roofRect.y + d.y0 * roofRect.h)
+    const doorW = Math.round((d.x1 - d.x0) * roofRect.w)
+    const doorH = Math.round((d.y1 - d.y0) * roofRect.h)
+    root.style.setProperty('--door-x', `${doorX}px`)
     root.style.setProperty('--door-top', `${doorTop}px`)
+    root.style.setProperty('--door-w', `${doorW}px`)
     root.style.setProperty('--door-h', `${doorH}px`)
-    // 檐下的墙身：让门看起来是嵌在这栋建筑里，而不是浮在渐变背景上
-    root.style.setProperty('--wall-w', `${Math.round(roofRect.w * 0.94)}px`)
-    root.style.setProperty('--wall-top', `${Math.round(roofRect.y + roofRect.h - 14)}px`)
-    doorRef.current = { x: rootRect.width / 2, y: doorTop + 40 }
-    // 镜头推进时以门口为原点
-    root.style.setProperty('--zoom-origin', `50% ${doorTop + 60}px`)
+    const doorCx = doorX + doorW / 2
+    const doorCy = doorTop + doorH / 2
+    doorRef.current = { x: doorCx, y: doorCy }
+    // 镜头以门为原点推进，推到门洞盖满整个视口为止——门在整栋建筑里只占一小间，
+    // 固定倍数推不进去，只会停在门外半空中淡出
+    root.style.setProperty('--zoom-origin', `${doorCx}px ${doorCy}px`)
+    const fill = Math.max(rootRect.width / doorW, rootRect.height / doorH)
+    root.style.setProperty('--zoom-scale', Math.max(3.4, fill * 1.15).toFixed(2))
 
     const dpr = Math.min(2, window.devicePixelRatio || 1)
     const w = Math.round(rootRect.width)
@@ -119,6 +127,9 @@ export default function Gate({ onEnter }) {
 
     const ro = new ResizeObserver(() => layout())
     if (rootRef.current) ro.observe(rootRef.current)
+    // 标题字体晚到：换上 Noto Serif JP 后标题变高，建筑整体下移几像素，
+    // 根节点尺寸却没变。不盯着标题，门和帘子的锚点就停在旧位置上
+    if (headRef.current) ro.observe(headRef.current)
     return () => {
       cancelled = true
       ro.disconnect()
@@ -231,7 +242,6 @@ export default function Gate({ onEnter }) {
         </Suspense>
       )}
       <div className="gate__grain" />
-      <div className="gate__wall" />
 
       {/* 帘后的拉门：门框 / 屋内 / 两扇障子 */}
       <div className="doorway">
@@ -242,14 +252,32 @@ export default function Gate({ onEnter }) {
         <div className="doorway__frame" />
       </div>
 
-      <header className="gate__head">
+      <header className="gate__head" ref={headRef}>
         <span className="gate__index">01</span>
         <h1 className="gate__title">{SCENE.title}</h1>
         <p className="gate__sub">{SCENE.subtitle}</p>
       </header>
 
-      <div className="gate__roof">
-        <img ref={imgRef} src={SCENE.roof} alt={SCENE.title} draggable="false" onLoad={() => setLoaded(true)} />
+      <div className="gate__roof" style={{ '--base': SCENE.temple.base }}>
+        <img
+          ref={imgRef}
+          src={SCENE.temple.src}
+          alt={SCENE.temple.alt}
+          draggable="false"
+          onLoad={() => setReady((r) => ({ ...r, img: true }))}
+        />
+        {/* 阿字池：同一张图上下翻转，沿石台下沿对称 */}
+        <div className="gate__pond" aria-hidden="true">
+          <img src={SCENE.temple.src} alt="" draggable="false" />
+        </div>
+        <img
+          className="gate__eaves"
+          ref={eavesRef}
+          src={SCENE.temple.eaves}
+          alt=""
+          aria-hidden="true"
+          onLoad={() => setReady((r) => ({ ...r, eaves: true }))}
+        />
       </div>
 
       <canvas className="gate__canvas" ref={canvasRef} />

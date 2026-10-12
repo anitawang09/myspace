@@ -1,9 +1,17 @@
-// 只保留千鳥破風。这是整个入口场景的配置来源。
+// 入口场景的配置来源。
 import { assetUrl } from '../lib/assetUrl.js'
+import TEMPLE from './temple.json'
 
 export const SCENE = {
   id: 'chidori',
-  roof: assetUrl('roofs/chidori.svg'),
+  // 鳳凰堂由 scripts/bake-temple.mjs 从 src/three/phoenixHall.js 烘成静态图。
+  // eaves 只含各层屋顶：字帘挂在檐口下沿，不能按整栋建筑的最低点（石台）去挂
+  temple: {
+    src: assetUrl('temple/phoenix-hall.webp'),
+    eaves: assetUrl('temple/phoenix-hall-eaves.png'),
+    alt: '平等院鳳凰堂',
+    ...TEMPLE,
+  },
   title: '千鳥破風',
   subtitle: 'ちどりはふ · 墨紫の宵',
   // 15 秒后拉门自动打开

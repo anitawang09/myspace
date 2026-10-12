@@ -64,8 +64,10 @@ export class Curtain {
     // 而不是靠边界碰撞硬撑 —— 那样右下角会堆成一坨。
     const floor = bounds.h - Math.max(28, bounds.h * 0.06)
     const inset = colGap * 0.45
-    const x0 = roofRect.x + span.u0 * roofRect.w + inset
-    const x1 = roofRect.x + span.u1 * roofRect.w - inset
+    // 建筑比视口宽时（竖屏）两翼伸出画面，帘子只挂在看得见的那一段，
+    // 不然画外的绳子会被边界反弹推回来，在左右两边挤成一堆
+    const x0 = Math.max(inset, roofRect.x + span.u0 * roofRect.w + inset)
+    const x1 = Math.min(bounds.w - inset, roofRect.x + span.u1 * roofRect.w - inset)
     const cols = Math.max(1, Math.floor((x1 - x0) / colGap))
     const step = cols > 1 ? (x1 - x0) / cols : 0
 

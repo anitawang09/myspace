@@ -36,9 +36,9 @@ body {
   transform-origin: var(--zoom-origin, 50% 60%);
 }
 
-/* 推门而入：以门口为原点把镜头推进去 */
+/* 推门而入：以门口为原点把镜头推进去，倍数由 Gate.jsx 按门洞大小算出 */
 .gate.is-zooming {
-  transform: scale(3.4);
+  transform: scale(var(--zoom-scale, 3.4));
   opacity: 0;
   transition: transform 1100ms cubic-bezier(.5,0,.75,0), opacity 1100ms ease-in 260ms;
 }
@@ -71,37 +71,19 @@ body {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='160' height='160' filter='url(%23n)' opacity='.5'/></svg>");
 }
 
-/* 檐下的墙身，门嵌在它上面 */
-.gate__wall {
-  position: absolute;
-  left: 50%;
-  top: var(--wall-top, 60%);
-  width: var(--wall-w, 50%);
-  bottom: 0;
-  transform: translateX(-50%);
-  z-index: 1;
-  background: linear-gradient(
-    180deg,
-    rgba(40, 33, 50, .30) 0%,
-    rgba(40, 33, 50, .20) 46%,
-    rgba(40, 33, 50, 0) 100%
-  );
-  box-shadow: inset 0 14px 22px -12px rgba(20, 14, 26, .55);
-  pointer-events: none;
-}
-
-/* 帘后的拉门 */
+/* 帘后的拉门：盖在中堂正面那一间上，尺寸全按门宽比例走——
+   门在整栋建筑里只有一百来像素宽，写死的 px 边框会把障子压成一块木板 */
 .doorway {
   position: absolute;
-  left: 50%;
+  left: var(--door-x, 45%);
   top: var(--door-top, 60%);
-  width: var(--door-w, 40%);
-  height: var(--door-h, 40%);
-  transform: translateX(-50%);
+  width: var(--door-w, 10%);
+  height: var(--door-h, 10%);
   z-index: 2;
   overflow: hidden;
-  --cell: calc(var(--door-w, 400px) / 9);
-  --lat: #7b5636;
+  --cell: calc(var(--door-w, 120px) / 6);
+  --bar: max(1px, calc(var(--door-w, 120px) * .014));
+  --lat: #5a3a26;
 }
 
 /* 门内：拉开前是一片深色，拉开后暖光漫出来 */
@@ -128,10 +110,10 @@ body {
   bottom: 0;
   width: 50.4%;
   background:
-    repeating-linear-gradient(90deg, transparent 0 var(--cell), var(--lat) var(--cell) calc(var(--cell) + 3px)),
-    repeating-linear-gradient(0deg, transparent 0 var(--cell), var(--lat) var(--cell) calc(var(--cell) + 3px)),
-    linear-gradient(180deg, #f8f1e0 0%, #e9dcc2 100%);
-  box-shadow: inset 0 0 0 7px #6b4a30, 0 6px 24px rgba(20, 12, 8, .35);
+    repeating-linear-gradient(90deg, transparent 0 var(--cell), var(--lat) var(--cell) calc(var(--cell) + var(--bar))),
+    repeating-linear-gradient(0deg, transparent 0 var(--cell), var(--lat) var(--cell) calc(var(--cell) + var(--bar))),
+    linear-gradient(180deg, #f7ecd4 0%, #e6d2ae 100%);
+  box-shadow: inset 0 0 0 calc(var(--bar) * 2.4) var(--lat);
   transition: transform 1900ms cubic-bezier(.62,.02,.24,1);
 }
 .shoji--l { left: 0; }
@@ -139,14 +121,15 @@ body {
 .gate.is-open .shoji--l { transform: translateX(-101%); }
 .gate.is-open .shoji--r { transform: translateX(101%); }
 
-/* 门框（鴨居・敷居・柱） */
+/* 门框（鴨居・敷居）：两侧是建筑自己的朱柱，只补上下两道和一圈进深的暗影 */
 .doorway__frame {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  border: 12px solid #6b4a30;
-  border-top-width: 18px;
-  box-shadow: inset 0 0 26px rgba(20, 12, 6, .5);
+  border: 0 solid #4a1712;
+  border-top-width: calc(var(--bar) * 3);
+  border-bottom-width: calc(var(--bar) * 2);
+  box-shadow: inset 0 0 calc(var(--door-w, 120px) * .12) rgba(30, 8, 6, .45);
 }
 
 .gate__head {
@@ -169,12 +152,33 @@ body {
 .gate__roof {
   position: relative;
   z-index: 1;
-  width: min(48vw, 700px);
+  flex: none;
+  width: min(94vw, 1320px);
   margin-top: clamp(4px, 1.2vh, 14px);
   pointer-events: none;
-  filter: drop-shadow(0 18px 26px rgba(30, 18, 10, .22));
 }
 .gate__roof img { display: block; width: 100%; height: auto; -webkit-user-drag: none; }
+/* 只给 scanProfile 读像素用，不上屏 */
+.gate__roof .gate__eaves { display: none; }
+
+/* 阿字池：同一张图沿石台下沿（--base，烘焙时量出来的）上下翻转，
+   淡、糊、往下渐隐。字帘的下半截就垂在这片水面上 */
+.gate__pond {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--base, 1) * 100%);
+  height: 100%;
+  overflow: hidden;
+  opacity: .34;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0,0,0,.45) 30%, transparent 72%);
+  mask-image: linear-gradient(180deg, #000 0%, rgba(0,0,0,.45) 30%, transparent 72%);
+}
+.gate__pond img {
+  transform-origin: 50% 0;
+  transform: scaleY(-1) translateY(calc(var(--base, 1) * -100%));
+  filter: blur(1.2px) saturate(.75);
+}
 
 .gate__canvas {
   position: absolute;
@@ -242,7 +246,8 @@ body {
 .room__caption p { margin: 4px 0 0; font-size: 11px; letter-spacing: .24em; opacity: .7; }
 
 @media (max-width: 720px) {
-  .gate__roof { width: 92vw; }
+  /* 竖屏装不下整座鳳凰堂：中堂放大居中，两翼伸出画面 */
+  .gate__roof { width: 150vw; margin-top: clamp(16px, 7vh, 64px); }
   .room__caption { left: 20px; bottom: 22px; }
 }
 

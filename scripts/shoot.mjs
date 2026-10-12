@@ -3,11 +3,16 @@
 //   开门 —— 拉门滑开、暖光漫出、阵风把帘子吹开
 //   门内 —— 3D 书斋是否真的渲染出来（读像素判断，不只看有没有 canvas）
 import { chromium } from 'playwright'
-import { existsSync, mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const URL = process.env.URL || 'http://127.0.0.1:5173'
 const OUT = 'shots'
 const LOCAL = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+const TEMPLE = JSON.parse(
+  readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../src/data/temple.json'), 'utf8'),
+)
 mkdirSync(OUT, { recursive: true })
 
 const PROFILES = [
@@ -42,9 +47,9 @@ for (const prof of PROFILES) {
   await page.waitForTimeout(900)
 
   const stats = await page.evaluate(() => window.__curtains.chidori())
-  const geo = await page.evaluate(() => {
+  const geo = await page.evaluate((meta) => {
     const gate = document.querySelector('.gate')
-    const img = gate.querySelector('img').getBoundingClientRect()
+    const img = gate.querySelector('.gate__roof img').getBoundingClientRect()
     const door = gate.querySelector('.doorway').getBoundingClientRect()
     // 具体到 .gate__canvas：门外现在还有一块 LiquidEther 的 WebGL canvas，
     // 通配符 'canvas' 会先抓到它——而一块 canvas 一旦绑过 webgl 上下文，
@@ -52,15 +57,29 @@ for (const prof of PROFILES) {
     const cv = gate.querySelector('.gate__canvas')
     const root = gate.getBoundingClientRect()
     const z = (el) => +getComputedStyle(el).zIndex
+    // 门应当正好盖在烘焙时投影出来的中堂开间上
+    const want = {
+      x: img.left + meta.door.x0 * img.width,
+      y: img.top + meta.door.y0 * img.height,
+      w: (meta.door.x1 - meta.door.x0) * img.width,
+      h: (meta.door.y1 - meta.door.y0) * img.height,
+    }
     return {
-      roofBottom: Math.round(img.bottom - root.top),
       doorTop: Math.round(door.top - root.top),
       doorW: Math.round(door.width),
+      doorOff: Math.round(
+        Math.max(
+          Math.abs(door.left - want.x), Math.abs(door.top - want.y),
+          Math.abs(door.width - want.w), Math.abs(door.height - want.h),
+        ),
+      ),
+      // 中堂在正中：门的中线与建筑中线对齐
+      doorSkew: Math.round(Math.abs(door.left + door.width / 2 - (img.left + img.width / 2))),
       // 门必须在帘子后面：z(门) < z(canvas)
       order: z(gate.querySelector('.doorway')) < z(cv),
       ratio: +(cv.width / parseFloat(cv.style.width)).toFixed(2),
     }
-  })
+  }, TEMPLE)
   const ink = await page.evaluate(() => {
     const cv = document.querySelector('.gate__canvas')
     const ctx = cv.getContext('2d', { willReadFrequently: true })
@@ -83,8 +102,8 @@ for (const prof of PROFILES) {
 
   console.log(
     `  门外  ropes=${stats.ropes} 粒子=${stats.particles} 字号=${stats.fontSize} ` +
-      `画布=${stats.canvas.w}x${stats.canvas.h}(${geo.ratio}x) 檐口y=${geo.roofBottom} ` +
-      `门顶y=${geo.doorTop} 门宽=${geo.doorW} 帘底=${stats.maxY}/${stats.bottom} ` +
+      `画布=${stats.canvas.w}x${stats.canvas.h}(${geo.ratio}x) 帘顶y=${stats.box.y0} ` +
+      `门顶y=${geo.doorTop} 门宽=${geo.doorW} 门偏=${geo.doorOff} 帘底=${stats.maxY}/${stats.bottom} ` +
       `余量=${stats.slack} 贴边=${stats.floorContacts} 错位=${drift}`,
   )
   if (!stats.ok) fail(`建帘失败(${stats.reason})`)
@@ -95,7 +114,10 @@ for (const prof of PROFILES) {
   if (drift > 14) fail(`墨迹与物理错位 ${drift}px`)
   if (Math.abs(geo.ratio - Math.min(2, prof.dsf)) > 0.01) fail(`Canvas 缩放比 ${geo.ratio}`)
   if (!geo.order) fail('拉门没有排在帘子后面')
-  if (geo.doorTop < geo.roofBottom - 60) fail(`门顶(${geo.doorTop}) 离檐口(${geo.roofBottom}) 太远`)
+  if (geo.doorOff > 2) fail(`拉门偏离中堂开间 ${geo.doorOff}px`)
+  if (geo.doorSkew > 2) fail(`拉门不在建筑中线上 ${geo.doorSkew}px`)
+  // 帘子从檐口挂下来，必须盖过门：要是轮廓误扫了整栋建筑（最低点是石台），帘顶会掉到门下面
+  if (stats.box.y0 >= geo.doorTop) fail(`帘顶(${stats.box.y0}) 没盖过门顶(${geo.doorTop})，轮廓可能扫成了石台`)
 
   // ── 背景的 LiquidEther：是懒加载的，给它一点时间挂上。
   // 验证"真的在动"不能用 gl.readPixels 在渲染循环外去读——WebGL 默认不保留
