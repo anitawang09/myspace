@@ -3,7 +3,7 @@ import { Curtain } from '../physics/curtain.js'
 import { scanProfile } from '../lib/profile.js'
 import { SCENE } from '../data/scene.js'
 
-// 门外这一幕是关键路径——标题、屋顶、字帘、倒计时都得尽快画出来。
+// 门外这一幕是关键路径——标题、建筑、字帘、倒计时都得尽快画出来。
 // 懒加载背景的流体效果，别让 three.js 拖慢首屏（和 Room 场景同一个套路）。
 const LiquidEther = lazy(() => import('../effects/LiquidEther.jsx'))
 
@@ -13,8 +13,7 @@ const ZOOM_MS = 1100
 
 // 系统关了动态效果就别硬塞一个全程流动的背景；只读一次，这个偏好
 // 在一个会话里基本不会变，不值得为它再订阅 change 事件。
-const prefersReducedMotion =
-  typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /**
  * 入口：鳳凰堂 + Verlet 字帘，中堂正面的开间里是一道日式拉门。
@@ -60,7 +59,7 @@ export default function Gate({ onEnter }) {
     const profile = scanProfile(eaves)
     if (!profile) return false
 
-    const roofRect = {
+    const templeRect = {
       x: imgRect.left - rootRect.left,
       y: imgRect.top - rootRect.top,
       w: imgRect.width,
@@ -69,10 +68,10 @@ export default function Gate({ onEnter }) {
 
     // 门就是中堂正面那一间：烘焙时把开间的四角投影到图上，存成归一化矩形
     const d = SCENE.temple.door
-    const doorX = Math.round(roofRect.x + d.x0 * roofRect.w)
-    const doorTop = Math.round(roofRect.y + d.y0 * roofRect.h)
-    const doorW = Math.round((d.x1 - d.x0) * roofRect.w)
-    const doorH = Math.round((d.y1 - d.y0) * roofRect.h)
+    const doorX = Math.round(templeRect.x + d.x0 * templeRect.w)
+    const doorTop = Math.round(templeRect.y + d.y0 * templeRect.h)
+    const doorW = Math.round((d.x1 - d.x0) * templeRect.w)
+    const doorH = Math.round((d.y1 - d.y0) * templeRect.h)
     root.style.setProperty('--door-x', `${doorX}px`)
     root.style.setProperty('--door-top', `${doorTop}px`)
     root.style.setProperty('--door-w', `${doorW}px`)
@@ -98,19 +97,12 @@ export default function Gate({ onEnter }) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
     const curtain = curtainRef.current || (curtainRef.current = new Curtain())
-    const ok = curtain.build({
-      bounds: { w, h },
-      roofRect,
-      profile,
-      lines: SCENE.lines,
-    })
+    const ok = curtain.build({ bounds: { w, h }, rect: templeRect, profile, lines: SCENE.lines })
     if (ok) {
-      curtain.settle(260)
+      curtain.settle()
       curtain.draw(ctx, { ink: SCENE.palette.ink, cord: SCENE.palette.cord, font: FONT(curtain.fontSize) })
     }
-    if (typeof window !== 'undefined') {
-      window.__curtains = { [SCENE.id]: () => curtain.stats() }
-    }
+    window.__curtain = () => curtain.stats()
     return ok
   }, [])
 
@@ -167,7 +159,7 @@ export default function Gate({ onEnter }) {
     setOpening(true)
     // 门一开，门内的气流把帘子吹开
     const { x, y } = doorRef.current
-    curtainRef.current?.gust(x, y, 1)
+    curtainRef.current?.gust(x, y)
     setTimeout(() => setZooming(true), DOOR_SLIDE_MS - 550)
     setTimeout(onEnter, DOOR_SLIDE_MS - 550 + ZOOM_MS)
   }, [onEnter])
@@ -183,9 +175,7 @@ export default function Gate({ onEnter }) {
   }, [delay, open])
 
   const onPointerMove = (e) => {
-    const root = rootRef.current
-    if (!root) return
-    const r = root.getBoundingClientRect()
+    const r = rootRef.current.getBoundingClientRect()
     const p = pointerRef.current
     const x = e.clientX - r.left
     const y = e.clientY - r.top
@@ -201,10 +191,8 @@ export default function Gate({ onEnter }) {
     <section
       className={`gate${opening ? ' is-open' : ''}${zooming ? ' is-zooming' : ''}`}
       ref={rootRef}
-      data-card={SCENE.id}
       style={{
         '--ink': SCENE.palette.ink,
-        '--paper': SCENE.palette.paper,
         '--glow': SCENE.palette.glow,
         '--from': SCENE.palette.from,
         '--to': SCENE.palette.to,
@@ -222,7 +210,6 @@ export default function Gate({ onEnter }) {
             className="gate__liquid"
             style={{ pointerEvents: 'none' }}
             colors={SCENE.palette.liquid}
-            lightMode={false}
             // 力道比示例默认值收着点：空闲的自动漂移不该把速度场推到
             // 调色板最暖的那一头，那样标题背后会无端冒出一团金色光斑
             mouseForce={9}
@@ -232,7 +219,6 @@ export default function Gate({ onEnter }) {
             // 在低端设备/软件渲染上这是最贵的一项，关掉之后默认的平流已经够看
             resolution={0.3}
             iterationsPoisson={20}
-            autoDemo
             autoSpeed={0.35}
             autoIntensity={1}
             takeoverDuration={0.4}
@@ -258,7 +244,7 @@ export default function Gate({ onEnter }) {
         <p className="gate__sub">{SCENE.subtitle}</p>
       </header>
 
-      <div className="gate__roof" style={{ '--base': SCENE.temple.base }}>
+      <div className="gate__temple" style={{ '--base': SCENE.temple.base }}>
         <img
           ref={imgRef}
           src={SCENE.temple.src}

@@ -1,19 +1,19 @@
 import * as THREE from 'three'
 
 /** 程序化贴图：全部用离屏 canvas 画，不依赖外部素材 */
-export function makeTexture(w, h, paint, { repeat, srgb = true, aniso = 8 } = {}) {
+export function makeTexture(w, h, paint, { repeat } = {}) {
   const cv = document.createElement('canvas')
   cv.width = w
   cv.height = h
   paint(cv.getContext('2d'), w, h)
   const tex = new THREE.CanvasTexture(cv)
-  if (srgb) tex.colorSpace = THREE.SRGBColorSpace
+  tex.colorSpace = THREE.SRGBColorSpace
   if (repeat) {
     tex.wrapS = THREE.RepeatWrapping
     tex.wrapT = THREE.RepeatWrapping
     tex.repeat.set(repeat[0], repeat[1])
   }
-  tex.anisotropy = aniso
+  tex.anisotropy = 8
   return tex
 }
 
@@ -24,102 +24,6 @@ const noise = (ctx, w, h, n, alpha) => {
   }
 }
 
-export const tatami = (ctx, w, h) => {
-  ctx.fillStyle = '#9a9070'
-  ctx.fillRect(0, 0, w, h)
-  ctx.strokeStyle = 'rgba(84,76,50,.4)'
-  ctx.lineWidth = 1
-  for (let y = 4; y < h; y += 5) {
-    ctx.beginPath()
-    ctx.moveTo(0, y)
-    ctx.lineTo(w, y)
-    ctx.stroke()
-  }
-  noise(ctx, w, h, 1400, 0.1)
-  ctx.fillStyle = '#2f3a44'
-  ctx.fillRect(0, 0, w, 10)
-  ctx.fillRect(0, h - 10, w, 10)
-}
-
-/** 障子：和纸 + 木格。夜里外头是霓虹的城市，冷光透进来 */
-export const shoji = (ctx, w, h) => {
-  const g = ctx.createLinearGradient(0, 0, 0, h)
-  g.addColorStop(0, '#191d38')
-  g.addColorStop(0.36, '#2f2848')
-  g.addColorStop(0.62, '#5c4560')
-  g.addColorStop(1, '#8d7563')
-  ctx.fillStyle = g
-  ctx.fillRect(0, 0, w, h)
-
-  // 窗外的霓虹：几道竖条与一团洇开的光晕，隔着纸是糊的
-  ctx.globalAlpha = 0.5
-  const neon = [
-    ['#ff2d78', 0.16, 0.22, 0.05, 0.5],
-    ['#25e6ff', 0.72, 0.1, 0.035, 0.62],
-    ['#ffb03a', 0.46, 0.55, 0.03, 0.2],
-    ['#b14bff', 0.86, 0.3, 0.045, 0.4],
-  ]
-  for (const [color, x, y, bw, bh] of neon) {
-    const grd = ctx.createRadialGradient(x * w, y * h, 0, x * w, y * h, bw * w * 6)
-    grd.addColorStop(0, color)
-    grd.addColorStop(1, 'rgba(0,0,0,0)')
-    ctx.fillStyle = grd
-    ctx.fillRect(0, 0, w, h)
-    ctx.fillStyle = color
-    ctx.globalAlpha = 0.32
-    ctx.fillRect(x * w, y * h, bw * w, bh * h)
-    ctx.globalAlpha = 0.5
-  }
-  ctx.globalAlpha = 1
-
-  // 和纸纤维
-  ctx.fillStyle = 'rgba(255,248,232,.20)'
-  ctx.fillRect(0, 0, w, h)
-  ctx.globalCompositeOperation = 'multiply'
-  ctx.fillStyle = 'rgba(255,255,255,1)'
-  ctx.globalCompositeOperation = 'source-over'
-  for (let i = 0; i < 2200; i++) {
-    ctx.fillStyle = `rgba(140,120,95,${Math.random() * 0.13})`
-    ctx.fillRect(Math.random() * w, Math.random() * h, Math.random() * 8 + 1, 1)
-  }
-
-  // 木格
-  ctx.fillStyle = '#5b3f27'
-  const cols = 16
-  const rows = 9
-  const t = Math.max(3, w / 190)
-  for (let i = 0; i <= cols; i++) ctx.fillRect((i * (w - t)) / cols, 0, t, h)
-  for (let j = 0; j <= rows; j++) ctx.fillRect(0, (j * (h - t)) / rows, w, t)
-  ctx.fillStyle = '#432d18'
-  ctx.fillRect(0, 0, w, t * 2.6)
-  ctx.fillRect(0, h - t * 2.6, w, t * 2.6)
-}
-
-export const plaster = (ctx, w, h) => {
-  ctx.fillStyle = '#4a4238'
-  ctx.fillRect(0, 0, w, h)
-  for (let i = 0; i < 5200; i++) {
-    const v = 60 + Math.random() * 26
-    ctx.fillStyle = `rgba(${v + 16},${v + 6},${v - 6},.32)`
-    ctx.fillRect(Math.random() * w, Math.random() * h, 2, 2)
-  }
-}
-
-export const wood = (ctx, w, h) => {
-  ctx.fillStyle = '#4a3020'
-  ctx.fillRect(0, 0, w, h)
-  for (let i = 0; i < 90; i++) {
-    ctx.strokeStyle = `rgba(${25 + Math.random() * 40},${14 + Math.random() * 24},6,.34)`
-    ctx.lineWidth = Math.random() * 2.4 + 0.4
-    ctx.beginPath()
-    const y = Math.random() * h
-    ctx.moveTo(0, y)
-    ctx.bezierCurveTo(w * 0.3, y + (Math.random() - 0.5) * 22, w * 0.7, y + (Math.random() - 0.5) * 22, w, y)
-    ctx.stroke()
-  }
-}
-
-/** 履历纸：远看是一张排好版的 A4，近看是名字 + 分栏条目 */
 export const resumePaper = (ctx, w, h) => {
   ctx.fillStyle = '#f7f3e8'
   ctx.fillRect(0, 0, w, h)

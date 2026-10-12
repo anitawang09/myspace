@@ -19,7 +19,7 @@ const hash = (n) => {
 }
 
 // 右下角消融权重：只用于渲染淡化，绝不参与物理，绳子始终完整连结
-export function dissolveWeight(x, y, w, h) {
+function dissolveWeight(x, y, w, h) {
   const d = (x / w) * 0.55 + (y / h) * 0.45
   return smoothstep(0.62, 0.99, d)
 }
@@ -39,21 +39,21 @@ export class Curtain {
   /**
    * @param {object} o
    * @param {{w:number,h:number}} o.bounds     画布尺寸（CSS 像素）
-   * @param {{x:number,y:number,w:number,h:number}} o.roofRect 屋顶图在画布内的矩形
+   * @param {{x:number,y:number,w:number,h:number}} o.rect     建筑图在画布内的矩形
    * @param {object} o.profile  scanProfile 的结果
    * @param {string[]} o.lines  文字池
    */
-  build({ bounds, roofRect, profile, lines }) {
+  build({ bounds, rect, profile, lines }) {
     this.bounds = bounds
     this.ropes = []
     const span = profileSpan(profile)
-    if (!span || bounds.h < 160 || roofRect.w < 40) {
-      this.diag = { ok: false, reason: !span ? 'no-profile' : 'bad-layout', ropes: 0 }
+    if (!span) {
+      this.diag = { ok: false, reason: 'no-profile', ropes: 0 }
       return false
     }
 
-    // 字号随屋顶宽度而非画布宽度，屋顶多宽帘子就多密
-    const fontSize = Math.max(12, Math.min(20, roofRect.w / 46))
+    // 字号随建筑宽度而非画布宽度，建筑多宽帘子就多密
+    const fontSize = Math.max(12, Math.min(20, rect.w / 46))
     const spacing = fontSize * 1.06
     const colGap = fontSize * 1.78
     this.fontSize = fontSize
@@ -66,8 +66,8 @@ export class Curtain {
     const inset = colGap * 0.45
     // 建筑比视口宽时（竖屏）两翼伸出画面，帘子只挂在看得见的那一段，
     // 不然画外的绳子会被边界反弹推回来，在左右两边挤成一堆
-    const x0 = Math.max(inset, roofRect.x + span.u0 * roofRect.w + inset)
-    const x1 = Math.min(bounds.w - inset, roofRect.x + span.u1 * roofRect.w - inset)
+    const x0 = Math.max(inset, rect.x + span.u0 * rect.w + inset)
+    const x1 = Math.min(bounds.w - inset, rect.x + span.u1 * rect.w - inset)
     const cols = Math.max(1, Math.floor((x1 - x0) / colGap))
     const step = cols > 1 ? (x1 - x0) / cols : 0
 
@@ -76,18 +76,18 @@ export class Curtain {
 
     for (let c = 0; c <= cols; c++) {
       const ax = x0 + step * c
-      const u = (ax - roofRect.x) / roofRect.w
-      const py = sampleProfile(profile, u, 'bottom')
+      const u = (ax - rect.x) / rect.w
+      const py = sampleProfile(profile, u)
       if (py == null) continue
 
       // 咬合：锚点往檐口里塞 2px，杜绝屋顶与文字之间露出缝隙
-      const anchorY = roofRect.y + py * roofRect.h - 2
+      const anchorY = rect.y + py * rect.h - 2
       const avail = floor - anchorY
       if (avail < spacing * 3) continue
 
       const r = hash(c + 1)
       // 右侧稍短一些，形成飘散的帘尾；其余基本挂满
-      const edge = clamp01((ax - roofRect.x) / roofRect.w)
+      const edge = clamp01((ax - rect.x) / rect.w)
       const lenScale = 1 - smoothstep(0.55, 1, edge) * (0.12 + r * 0.2)
       const count = Math.max(3, Math.floor((avail / spacing) * lenScale))
 
@@ -108,12 +108,12 @@ export class Curtain {
    * 一阵风：拉门推开时门内的气流把帘子吹开。
    * 只给力，不动约束，绳子照常自己荡回来。
    */
-  gust(x, y, power = 1) {
-    this.burst = { x, y, power, life: 1 }
+  gust(x, y) {
+    this.burst = { x, y, life: 1 }
   }
 
-  /** 预热：先跑若干步让帘子自然垂下，切卡时不会看到“掉下来”的突兀过程 */
-  settle(steps = 240) {
+  /** 预热：先跑若干步让帘子自然垂下，首帧不会看到“掉下来”的突兀过程 */
+  settle(steps = 260) {
     for (let i = 0; i < steps; i++) this.step(null, 16.7)
   }
 
@@ -149,7 +149,7 @@ export class Curtain {
           const by = p.y - burst.y
           const bd = Math.hypot(bx, by) || 1e-6
           // 近门口吹得最狠，越远越弱；带一点上掀
-          const fall = Math.max(0, 1 - bd / 460) * burst.life * burst.power
+          const fall = Math.max(0, 1 - bd / 460) * burst.life
           ax += (bx / bd) * PHYSICS.FORCE * 9 * fall
           ay -= PHYSICS.GRAVITY * 0.45 * fall
         }

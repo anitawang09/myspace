@@ -3,7 +3,6 @@ import { assetUrl } from '../lib/assetUrl.js'
 import TEMPLE from './temple.json'
 
 export const SCENE = {
-  id: 'chidori',
   // 鳳凰堂由 scripts/bake-temple.mjs 从 src/three/phoenixHall.js 烘成静态图。
   // eaves 只含各层屋顶：字帘挂在檐口下沿，不能按整栋建筑的最低点（石台）去挂
   temple: {
@@ -21,7 +20,6 @@ export const SCENE = {
     to: '#87769b',
     ink: '#282132',
     cord: 'rgba(40,33,50,0.15)',
-    paper: 'rgba(243,239,246,0.72)',
     // 门内透出的暖光
     glow: '#f3c98a',
     // 背景里流动的墨：平时就在近黑到墨紫之间游走，暖色金只留给

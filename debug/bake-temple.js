@@ -26,7 +26,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping
 renderer.toneMappingExposure = num('exp', 1.0)
 renderer.outputColorSpace = THREE.SRGBColorSpace
 renderer.shadowMap.enabled = true
-renderer.shadowMap.type = THREE.PCFSoftShadowMap
+renderer.shadowMap.type = THREE.PCFShadowMap
 document.body.appendChild(renderer.domElement)
 
 const scene = new THREE.Scene()
@@ -38,8 +38,6 @@ scene.environmentIntensity = num('env', 0.18)
 
 const model = createPhoenixHallModel()
 scene.add(model)
-// 地面的阴影接收平面：透明底的图里它会变成一圈悬空的灰影，去掉
-model.children.filter((o) => o.isMesh && o.material?.isShadowMaterial).forEach((o) => (o.visible = false))
 
 // 光：门外是淡紫的暮色，主光偏暖、从左前上方来，天光补一层淡紫
 scene.add(new THREE.HemisphereLight(0xe6dcf5, 0x4a3c38, num('hemi', 0.38)))

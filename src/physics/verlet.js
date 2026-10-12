@@ -18,14 +18,14 @@ export function makeParticle(x, y, pinned = false) {
 }
 
 // 一步 Verlet 积分：位置 += (位置 - 上一帧位置) * 阻尼 + 加速度
-export function integrate(p, ax, ay, damping = PHYSICS.DAMPING) {
+export function integrate(p, ax, ay) {
   if (p.pinned) {
     p.px = p.x
     p.py = p.y
     return
   }
-  const vx = (p.x - p.px) * damping
-  const vy = (p.y - p.py) * damping
+  const vx = (p.x - p.px) * PHYSICS.DAMPING
+  const vy = (p.y - p.py) * PHYSICS.DAMPING
   p.px = p.x
   p.py = p.y
   p.x += vx + ax
@@ -47,31 +47,25 @@ export function solveDistance(a, b, rest) {
 }
 
 // 边界：碰到画布四壁按 BOUNCE 反弹（用 Verlet 的“改写上一帧位置”来表达速度反向）
-export function solveBounds(p, w, h, pad = 0) {
-  if (p.pinned) return false
-  let hit = false
+export function solveBounds(p, w, h, pad) {
+  if (p.pinned) return
   const e = PHYSICS.BOUNCE
   if (p.x < pad) {
     const v = p.px - p.x
     p.x = pad
     p.px = p.x - v * e
-    hit = true
   } else if (p.x > w - pad) {
     const v = p.px - p.x
     p.x = w - pad
     p.px = p.x - v * e
-    hit = true
   }
   if (p.y > h - pad) {
     const v = p.py - p.y
     p.y = h - pad
     p.py = p.y - v * e
-    hit = true
   } else if (p.y < pad) {
     const v = p.py - p.y
     p.y = pad
     p.py = p.y - v * e
-    hit = true
   }
-  return hit
 }

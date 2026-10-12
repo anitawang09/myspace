@@ -10,8 +10,8 @@ const Room = lazy(() => import('./scenes/Room.jsx'))
 const OVERLAYS = { resume: Resume, gallery: Gallery, travel: Footprints }
 
 /**
- * 两幕：门外（千鳥破風 + 字帘 + 拉门）→ 门内（3D 书斋）。
- * 屋里三样东西可以点开：桌上的纸 = 履历，架上的相机 = 写真，地上的卡与机票 = 足迹。
+ * 两幕：门外（鳳凰堂 + 字帘 + 拉门）→ 门内（床の間のある座敷）。
+ * 屋里三样东西可以点开：桌上的纸 = 履历，床の間的相机 = 写真，榻榻米上的卡与机票 = 足迹。
  * ?room=1 直接进屋，?t=2 把等待改成 2 秒，?open=resume 直接打开某一层 —— 调试与截图用。
  */
 export default function App() {

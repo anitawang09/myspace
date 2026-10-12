@@ -45,16 +45,15 @@ if (bake.debug.touchesEdge) {
   process.exit(1)
 }
 
-if (previewDir) {
-  mkdirSync(previewDir, { recursive: true })
-  writeFileSync(`${previewDir}/temple.webp`, full)
-  writeFileSync(`${previewDir}/temple-mask.png`, mask)
-  writeFileSync(`${previewDir}/temple.json`, JSON.stringify(bake.meta, null, 2))
-  console.log('preview →', previewDir)
-} else {
-  mkdirSync(`${ROOT}/public/temple`, { recursive: true })
-  writeFileSync(`${ROOT}/public/temple/phoenix-hall.webp`, full)
-  writeFileSync(`${ROOT}/public/temple/phoenix-hall-eaves.png`, mask)
-  writeFileSync(`${ROOT}/src/data/temple.json`, JSON.stringify(bake.meta, null, 2) + '\n')
-  console.log('baked → public/temple/, src/data/temple.json')
-}
+const out = previewDir
+  ? { full: `${previewDir}/temple.webp`, mask: `${previewDir}/temple-mask.png`, meta: `${previewDir}/temple.json` }
+  : {
+      full: `${ROOT}/public/temple/phoenix-hall.webp`,
+      mask: `${ROOT}/public/temple/phoenix-hall-eaves.png`,
+      meta: `${ROOT}/src/data/temple.json`,
+    }
+for (const f of Object.values(out)) mkdirSync(dirname(f), { recursive: true })
+writeFileSync(out.full, full)
+writeFileSync(out.mask, mask)
+writeFileSync(out.meta, JSON.stringify(bake.meta, null, 2) + '\n')
+console.log('baked →', Object.values(out).join(', '))

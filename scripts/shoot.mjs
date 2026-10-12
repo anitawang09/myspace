@@ -1,7 +1,7 @@
 // 逐幕截图 + 自检：
 //   门外 —— 咬合对齐、垂帘手感、贴地高度、空隙与底部堆叠
 //   开门 —— 拉门滑开、暖光漫出、阵风把帘子吹开
-//   门内 —— 3D 书斋是否真的渲染出来（读像素判断，不只看有没有 canvas）
+//   门内 —— 3D 座敷是否真的渲染出来（读像素判断，不只看有没有 canvas），三个热点的位置与点击
 import { chromium } from 'playwright'
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
@@ -44,13 +44,13 @@ for (const prof of PROFILES) {
 
   // ── 门外：先把自动开门推远，从容检查闭门状态（开门另用点击与计时两条路各验一次）
   await page.goto(`${URL}?t=120`, { waitUntil: 'networkidle' })
-  await page.waitForFunction(() => window.__curtains && Object.keys(window.__curtains).length, null, { timeout: 20000 })
+  await page.waitForFunction(() => window.__curtain, null, { timeout: 20000 })
   await page.waitForTimeout(900)
 
-  const stats = await page.evaluate(() => window.__curtains.chidori())
+  const stats = await page.evaluate(() => window.__curtain())
   const geo = await page.evaluate((meta) => {
     const gate = document.querySelector('.gate')
-    const img = gate.querySelector('.gate__roof img').getBoundingClientRect()
+    const img = gate.querySelector('.gate__temple img').getBoundingClientRect()
     const door = gate.querySelector('.doorway').getBoundingClientRect()
     // 具体到 .gate__canvas：门外现在还有一块 LiquidEther 的 WebGL canvas，
     // 通配符 'canvas' 会先抓到它——而一块 canvas 一旦绑过 webgl 上下文，
@@ -166,20 +166,20 @@ for (const prof of PROFILES) {
   })
   const shot = `${OUT}/${prof.name}-4-room.png`
   await page.screenshot({ path: shot })
-  console.log(`  门内  webgl=${room.w}x${room.h} 场景对象=${room.objects} 热点=${room.hotspots.join(',')}`)
-  if (room.objects < 10) fail(`3D 场景对象太少 ${room.objects}`)
+  console.log(`  门内  webgl=${room.w}x${room.h} 网格=${room.objects} 热点=${room.hotspots.join(',')}`)
+  if (room.objects < 100) fail(`房间网格太少 ${room.objects}（座敷没建出来？）`)
   for (const id of ['resume', 'gallery', 'travel']) {
     if (!room.hotspots.includes(id)) fail(`缺少热点 ${id}`)
   }
 
-  // 热点在画面里的位置：相机要在左上、纸在中间、卡与机票在右下
+  // 热点在画面里的位置：相机在床の間（比桌上的纸更靠里）、纸在中间、卡与机票在右下
   const S = room.screen
   const inFrame = ([x, y]) => x > 0.02 && x < 0.98 && y > 0.02 && y < 0.98
   console.log(
     `        位置 相机=${S.gallery} 纸=${S.resume} 卡票=${S.travel}`,
   )
   for (const [id, p] of Object.entries(S)) if (!inFrame(p)) fail(`热点 ${id} 不在画面内 ${p}`)
-  if (S.gallery[0] > 0.45 || S.gallery[1] > 0.5) fail(`相机不在左上 ${S.gallery}`)
+  if (S.gallery[0] < 0.4 || S.gallery[0] > 0.75 || S.gallery[1] > S.resume[1]) fail(`相机不在床の間 ${S.gallery}`)
   if (S.resume[0] < 0.25 || S.resume[0] > 0.75) fail(`纸不在画面中部 ${S.resume}`)
   if (S.travel[0] < 0.55 || S.travel[1] < 0.5) fail(`卡与机票不在右下 ${S.travel}`)
 
@@ -197,9 +197,9 @@ for (const prof of PROFILES) {
   }
 
   if (prof.full) {
-    // 交互：光标横扫推开字帘 / 直接进屋看书桌
+    // 交互：光标横扫推开字帘 / 直接进屋
     await page.goto(`${URL}?t=99`, { waitUntil: 'networkidle' })
-    await page.waitForFunction(() => window.__curtains && Object.keys(window.__curtains).length)
+    await page.waitForFunction(() => window.__curtain)
     await page.waitForTimeout(700)
     const box = await page.locator('.gate').boundingBox()
     for (let s = 0; s <= 12; s++) {
@@ -211,7 +211,7 @@ for (const prof of PROFILES) {
     await page.goto(`${URL}?room=1`, { waitUntil: 'networkidle' })
     await page.waitForSelector('.room__canvas canvas')
     await page.waitForTimeout(3400)
-    await page.screenshot({ path: `${OUT}/6-desk.png` })
+    await page.screenshot({ path: `${OUT}/6-room.png` })
 
     // 悬停与点击：逐个热点走一遍
     const S2 = (await page.evaluate(() => window.__room())).screen

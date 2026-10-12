@@ -60,12 +60,12 @@ export default function Gallery({ onClose }) {
       >
         {PHOTOS.map((p, i) => (
           <figure className="polaroid" key={p.id} style={{ '--tilt': `${(i % 2 ? 1 : -1) * (0.6 + (i % 3) * 0.5)}deg` }}>
+            {/* url() 的引号不能省：文件名带空格（den haag.jpeg）时，不加引号整条声明作废 */}
             <div
               className="polaroid__img"
               style={
                 p.src
-                  ? // 引号不能省：文件名带空格（den haag.jpeg）时，不加引号的 url() 整条声明作废
-                    { backgroundImage: `url("${photoSrc(p.src)}")` }
+                  ? { backgroundImage: `url("${photoSrc(p.src)}")` }
                   : { background: `linear-gradient(160deg, ${p.tone[0]}, ${p.tone[1]})` }
               }
             >

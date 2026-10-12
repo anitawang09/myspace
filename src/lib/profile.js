@@ -1,13 +1,13 @@
-// 屋顶轮廓提取：图片加载后画进离屏 Canvas，
-// 逐列扫描 —— 自上而下第一个不透明像素得到 top（屋脊侧轮廓），
-// 自下而上第一个不透明像素得到 bottom（檐口下沿，文字就挂在这条线上）。
-// 结果按 0~1 归一化存储，之后随卡片尺寸任意缩放都能对齐。
+// 檐口轮廓提取：屋顶 mask 加载后画进离屏 Canvas，逐列自下而上找第一个
+// 不透明像素，得到檐口下沿（字帘就挂在这条线上）。
+// 结果按 0~1 归一化存储，之后随视口尺寸任意缩放都能对齐。
 
 const ALPHA_MIN = 24
+const SAMPLES = 320
 const cache = new Map()
 
-export function scanProfile(img, samples = 320) {
-  const key = `${img.currentSrc || img.src}|${samples}`
+export function scanProfile(img) {
+  const key = img.currentSrc || img.src
   if (cache.has(key)) return cache.get(key)
 
   const iw = img.naturalWidth || img.width
@@ -15,31 +15,17 @@ export function scanProfile(img, samples = 320) {
   if (!iw || !ih) return null
 
   // 扫描分辨率：宽度对齐采样数，高度等比，够精确又便宜
-  const sw = samples
+  const sw = SAMPLES
   const sh = Math.max(2, Math.round((ih / iw) * sw))
   const cv = document.createElement('canvas')
   cv.width = sw
   cv.height = sh
   const ctx = cv.getContext('2d', { willReadFrequently: true })
-  ctx.clearRect(0, 0, sw, sh)
   ctx.drawImage(img, 0, 0, sw, sh)
+  const { data } = ctx.getImageData(0, 0, sw, sh)
 
-  let data
-  try {
-    data = ctx.getImageData(0, 0, sw, sh).data
-  } catch {
-    return null // 跨域图片会污染画布，此时退回静态锚点
-  }
-
-  const top = new Float32Array(sw).fill(NaN)
   const bottom = new Float32Array(sw).fill(NaN)
   for (let x = 0; x < sw; x++) {
-    for (let y = 0; y < sh; y++) {
-      if (data[(y * sw + x) * 4 + 3] > ALPHA_MIN) {
-        top[x] = y / sh
-        break
-      }
-    }
     for (let y = sh - 1; y >= 0; y--) {
       if (data[(y * sw + x) * 4 + 3] > ALPHA_MIN) {
         bottom[x] = y / sh
@@ -52,15 +38,14 @@ export function scanProfile(img, samples = 320) {
   const filled = bottom.reduce((n, v) => n + (Number.isNaN(v) ? 0 : 1), 0)
   if (filled < sw * 0.1) return null
 
-  const profile = { samples: sw, aspect: ih / iw, top, bottom, filled }
+  const profile = { samples: sw, bottom }
   cache.set(key, profile)
   return profile
 }
 
 // u: 0~1 的横向位置 -> 归一化 y（相对图片高度）。空列返回 null。
-export function sampleProfile(profile, u, which = 'bottom') {
-  if (!profile) return null
-  const arr = profile[which]
+export function sampleProfile(profile, u) {
+  const arr = profile.bottom
   const f = Math.min(profile.samples - 1, Math.max(0, u * (profile.samples - 1)))
   const i = Math.floor(f)
   const j = Math.min(profile.samples - 1, i + 1)
@@ -74,7 +59,6 @@ export function sampleProfile(profile, u, which = 'bottom') {
 
 // 轮廓的有效横向区间（左右两端可能是全透明的空列）
 export function profileSpan(profile) {
-  if (!profile) return null
   const { bottom, samples } = profile
   let lo = 0
   let hi = samples - 1

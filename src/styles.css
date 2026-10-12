@@ -149,7 +149,7 @@ body {
 }
 .gate__sub { margin: 0; font-size: clamp(11px, 1.1vw, 13px); letter-spacing: .2em; opacity: .6; }
 
-.gate__roof {
+.gate__temple {
   position: relative;
   z-index: 1;
   flex: none;
@@ -157,9 +157,9 @@ body {
   margin-top: clamp(4px, 1.2vh, 14px);
   pointer-events: none;
 }
-.gate__roof img { display: block; width: 100%; height: auto; -webkit-user-drag: none; }
+.gate__temple img { display: block; width: 100%; height: auto; -webkit-user-drag: none; }
 /* 只给 scanProfile 读像素用，不上屏 */
-.gate__roof .gate__eaves { display: none; }
+.gate__temple .gate__eaves { display: none; }
 
 /* 阿字池：同一张图沿石台下沿（--base，烘焙时量出来的）上下翻转，
    淡、糊、往下渐隐。字帘的下半截就垂在这片水面上 */
@@ -229,12 +229,13 @@ body {
   position: absolute;
   left: 34px;
   bottom: 30px;
-  color: #f4e6cd;
+  /* 日光下的榻榻米很亮：墨色字 + 一圈纸色的晕，才压得住 */
+  color: #2b2219;
   opacity: 0;
   transform: translateY(8px);
   transition: opacity 900ms ease, transform 900ms ease;
   pointer-events: none;
-  text-shadow: 0 2px 18px rgba(0, 0, 0, .6);
+  text-shadow: 0 1px 14px rgba(255, 246, 228, .75);
 }
 .room__caption.is-on { opacity: .9; transform: none; }
 .room__caption h2 {
@@ -247,7 +248,7 @@ body {
 
 @media (max-width: 720px) {
   /* 竖屏装不下整座鳳凰堂：中堂放大居中，两翼伸出画面 */
-  .gate__roof { width: 150vw; margin-top: clamp(16px, 7vh, 64px); }
+  .gate__temple { width: 150vw; margin-top: clamp(16px, 7vh, 64px); }
   .room__caption { left: 20px; bottom: 22px; }
 }
 
@@ -560,18 +561,6 @@ body {
 /* 待建的内容 */
 .soon__jp { margin: 0; font-size: 17px; letter-spacing: .24em; }
 .soon__text { margin: 12px 0 0; font-size: 13px; line-height: 2; color: rgba(236, 230, 221, .74); }
-.soon__hint {
-  margin: 20px 0 0;
-  padding-left: 18px;
-  font-size: 12px;
-  line-height: 2;
-  color: rgba(150, 140, 170, .9);
-}
-.soon__hint code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11.5px;
-  color: rgba(93, 242, 255, .85);
-}
 
 @media (max-width: 720px) {
   .cv__item { flex-direction: column; gap: 4px; }

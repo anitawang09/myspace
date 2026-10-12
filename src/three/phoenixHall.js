@@ -1,20 +1,13 @@
 // Procedural Phoenix Hall (Byodo-in style) — code-only reconstruction of the reference render.
 // Units ≈ metres. +X lateral, +Y up, +Z = facade ("front"). Deterministic (seeded) noise only.
 import * as THREE from 'three';
+import { makeTexture } from './textures.js';
 
 const FLOOR = 1.0;
 let _seed = 1337;
 const rnd = () => ((_seed = (_seed * 1664525 + 1013904223) >>> 0) / 4294967296);
 
 /* ----------------------------------------------------------------- textures */
-function canvasTex(w, h, draw, repeat = [1, 1], srgb = true) {
-  const c = document.createElement('canvas'); c.width = w; c.height = h;
-  draw(c.getContext('2d'), w, h);
-  const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...repeat);
-  t.anisotropy = 8; if (srgb) t.colorSpace = THREE.SRGBColorSpace;
-  return t;
-}
 function speckle(ctx, w, h, n, a, cols) {
   for (let i = 0; i < n; i++) {
     ctx.fillStyle = cols[(rnd() * cols.length) | 0]; ctx.globalAlpha = a * rnd();
@@ -24,7 +17,7 @@ function speckle(ctx, w, h, n, a, cols) {
 }
 
 function makeMaterials() {
-  const tile = canvasTex(256, 256, (g, w, h) => {
+  const tile = makeTexture(256, 256, (g, w, h) => {
     g.fillStyle = '#46557a'; g.fillRect(0, 0, w, h);
     const cols = 8, cw = w / cols;
     for (let i = 0; i < cols; i++) {            // convex tile ridges running down-slope
@@ -34,23 +27,23 @@ function makeMaterials() {
     }
     for (let y = 0; y < h; y += 32) { g.fillStyle = 'rgba(10,14,26,0.55)'; g.fillRect(0, y, w, 3); }
     speckle(g, w, h, 900, 0.35, ['#8fa0c4', '#10141f', '#5a6a8c']);
-  }, [1, 1]);
-  const plaster = canvasTex(256, 256, (g, w, h) => {
+  }, { repeat: [1, 1] });
+  const plaster = makeTexture(256, 256, (g, w, h) => {
     g.fillStyle = '#e6dfd0'; g.fillRect(0, 0, w, h);
     speckle(g, w, h, 1400, 0.25, ['#bdb4a0', '#fff8ea', '#a79d88']);
     for (let i = 0; i < 6; i++) { g.fillStyle = 'rgba(120,105,80,0.07)'; g.fillRect(rnd() * w, 0, 6 + rnd() * 18, h); }
-  }, [2, 1]);
-  const stone = canvasTex(256, 256, (g, w, h) => {
+  }, { repeat: [2, 1] });
+  const stone = makeTexture(256, 256, (g, w, h) => {
     g.fillStyle = '#7b7a77'; g.fillRect(0, 0, w, h);
     speckle(g, w, h, 4000, 0.4, ['#6c6a66', '#a9a69f', '#b8b4ab', '#5e5c58']);
     g.strokeStyle = 'rgba(40,38,36,0.5)'; g.lineWidth = 2;
     for (let x = 0; x <= w; x += 64) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
-  }, [4, 1]);
-  const gravel = canvasTex(256, 256, (g, w, h) => {
+  }, { repeat: [4, 1] });
+  const gravel = makeTexture(256, 256, (g, w, h) => {
     g.fillStyle = '#a3a19d'; g.fillRect(0, 0, w, h);
     speckle(g, w, h, 6000, 0.5, ['#dcdad6', '#82807c', '#c6c4c0', '#96948f']);
-  }, [6, 6]);
-  const door = canvasTex(256, 256, (g, w, h) => {
+  }, { repeat: [6, 6] });
+  const door = makeTexture(256, 256, (g, w, h) => {
     g.fillStyle = '#8f1f14'; g.fillRect(0, 0, w, h);
     g.strokeStyle = '#4a0d08'; g.lineWidth = 4; g.strokeRect(2, 2, w - 4, h - 4);
     g.beginPath(); g.moveTo(w / 2, 0); g.lineTo(w / 2, h); g.stroke();
@@ -58,13 +51,13 @@ function makeMaterials() {
       g.fillStyle = '#d7aa44'; g.beginPath(); g.arc(x, y, 4.5, 0, 6.3); g.fill();
     }
     speckle(g, w, h, 500, 0.3, ['#c6361f', '#5a0f09']);
-  }, [1, 1]);
-  const red = canvasTex(128, 256, (g, w, h) => {
+  }, { repeat: [1, 1] });
+  const red = makeTexture(128, 256, (g, w, h) => {
     const gr = g.createLinearGradient(0, 0, w, 0);
     gr.addColorStop(0, '#8e1d12'); gr.addColorStop(0.5, '#c23a22'); gr.addColorStop(1, '#8a1b11');
     g.fillStyle = gr; g.fillRect(0, 0, w, h);
     speckle(g, w, h, 500, 0.3, ['#e0553a', '#5c0f08']);
-  }, [1, 2]);
+  }, { repeat: [1, 2] });
 
   const std = (o) => new THREE.MeshStandardMaterial(o);
   return {
@@ -82,7 +75,6 @@ function makeMaterials() {
     gold: std({ color: 0xe0b040, roughness: 0.28, metalness: 0.95 }),
     green: std({ color: 0x2f7a54, roughness: 0.5 }),
     wood: std({ color: 0x3a2018, roughness: 0.8 }),
-    shadow: new THREE.ShadowMaterial({ opacity: 0.45 }),
   };
 }
 
@@ -240,7 +232,7 @@ function roof(mats, o) {
     }
     inst(new THREE.SphereGeometry(1, 6, 5), mats.gold, ms, g);
   }
-  g.userData.eaveY = y0; return g;
+  return g;
 }
 
 /* ---------------------------------------------------------------- ornaments */
@@ -302,14 +294,14 @@ export function createPhoenixHallModel() {
   _seed = 1337;
   const mats = makeMaterials();
   const root = new THREE.Group(); root.name = 'PhoenixHall';
-  const parts = [];                                  // explodable + clickable top-level parts
-  const part = (id, label, explode = [0, 0, 0]) => {
-    const g = new THREE.Group(); g.name = id; g.userData = { partId: id, label, explode: new THREE.Vector3(...explode), home: new THREE.Vector3() };
+  const parts = [];                                  // top-level parts, by name
+  const part = (id) => {
+    const g = new THREE.Group(); g.name = id;
     root.add(g); parts.push(g); return g;
   };
 
   /* ---- platform --------------------------------------------------------- */
-  const plat = part('platform', 'Stone platform & stairs', [0, -3, 0]);
+  const plat = part('platform');
   const slab = (x0, x1, z0, z1, h = FLOOR) => {
     const w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
     const s = box(w, h - 0.12, d, cx, 0, cz, mats.stone, plat);
@@ -327,7 +319,7 @@ export function createPhoenixHallModel() {
   for (const s of [-1, 1]) box(0.5, 0.78, 2.1, s * 2.85, 0, 8.85, mats.stone, plat);
 
   /* ---- hall body -------------------------------------------------------- */
-  const body = part('hall-body', 'Hall body (posts, walls, doors)', [0, 0, 0]);
+  const body = part('hall-body');
   box(15.6, 0.12, 12.2, 0, FLOOR, 0, mats.wood, body);                               // deck
   // outer (mokoshi) ring posts
   const ring = [];
@@ -386,11 +378,11 @@ export function createPhoenixHallModel() {
   railing(5.7, -4.0, -5.7, -4.0, coreY + coreH + 0.2, mats, body, 0.7);
 
   /* ---- hall roofs ------------------------------------------------------- */
-  const mok = part('hall-pent-roof', 'Mokoshi pent roof', [0, 2.5, 0]);
+  const mok = part('hall-pent-roof');
   mok.add(roof(mats, { hw: 8.0, hd: 6.3, y0: FLOOR + 0.12 + 3.5 + 0.9, rise: 1.5, rhw: 5.5, rhd: 3.9, k: 1.15, lift: 0.45, thick: 0.25 }));
   // projecting entrance porch roofs on the facade
   mok.add(roof(mats, { cx: 0, cz: 6.4, hw: 3.4, hd: 2.0, y0: FLOOR + 0.12 + 3.5 + 0.9, rise: 1.0, rhw: 2.6, rhd: 0.0, k: 1.2, lift: 0.4, skip: [2], thick: 0.22 }));
-  const topRoof = part('hall-main-roof', 'Main hip-and-gable roof', [0, 6, 0]);
+  const topRoof = part('hall-main-roof');
   const rY = upY + 2.15 + 0.75;
   topRoof.add(roof(mats, { hw: 9.0, hd: 7.1, y0: rY, rise: 4.2, rhw: 3.6, rhd: 0, k: 1.5, lift: 0.7, thick: 0.38, N: 24, steps: 18 }));
   // end-gable pediments (white triangle with red frame) on the ridge ends
@@ -403,13 +395,13 @@ export function createPhoenixHallModel() {
   const phL = phoenix(mats), phR = phoenix(mats);
   phL.position.set(-3.45, ridgeY, 0); phR.position.set(3.45, ridgeY, 0);
   phL.rotation.y = Math.PI / 2 + 0.25; phR.rotation.y = -Math.PI / 2 - 0.25; phR.scale.setScalar(1.0);
-  const phA = part('phoenix-left', 'Phoenix finial (left)', [-3, 6, 0]); phA.add(phL); phL.position.x = -3.45;
-  const phB = part('phoenix-right', 'Phoenix finial (right)', [3, 6, 0]); phB.add(phR);
+  const phA = part('phoenix-left'); phA.add(phL); phL.position.x = -3.45;
+  const phB = part('phoenix-right'); phB.add(phR);
 
   /* ---- wings ------------------------------------------------------------ */
   for (const s of [-1, 1]) {
     const side = s < 0 ? 'left' : 'right';
-    const wing = part(`wing-${side}`, `Wing corridor (${side})`, [s * 5, 0, 0]);
+    const wing = part(`wing-${side}`);
     const wx0 = 7.3 * 1, wx1 = 17.5;
     const wp = [];
     for (let x = wx0 + 0.6; x <= wx1 + 0.01; x += 2.4) { wp.push([s * x, 2.0], [s * x, -2.0]); }
@@ -423,11 +415,11 @@ export function createPhoenixHallModel() {
       wallPanel(s * (x + 1.2), FLOOR + 0.12 + 1.35, 2.0, 2.1, 1.35, 'x', mats, wing);
     }
     railing(s * wx0, 2.0, s * wx1, 2.0, FLOOR + 0.12, mats, wing, 0.95);
-    const wr = part(`wing-roof-${side}`, `Wing roof (${side})`, [s * 5, 3, 0]);
+    const wr = part(`wing-roof-${side}`);
     wr.add(roof(mats, { cx: s * 12.9, cz: 0, hw: 5.6, hd: 3.1, y0: FLOOR + 0.12 + 3.1 + 0.95, rise: 1.7, rhw: 3.4, rhd: 0.0, k: 1.3, lift: 0.5, thick: 0.25 }));
 
     /* ---- tower -------------------------------------------------------- */
-    const tw = part(`tower-${side}`, `Corner tower (${side})`, [s * 8, 0, 0]);
+    const tw = part(`tower-${side}`);
     const tx = s * 19.6;
     const tp = [[tx - 1.9, 1.9], [tx + 1.9, 1.9], [tx - 1.9, -1.9], [tx + 1.9, -1.9], [tx, 1.9], [tx, -1.9], [tx - 1.9, 0], [tx + 1.9, 0]];
     posts(tp, FLOOR + 0.12, 3.1, 0.2, mats, tw);
@@ -436,10 +428,10 @@ export function createPhoenixHallModel() {
     for (const z of [1.9, -1.9]) { wallPanel(tx - 0.95, FLOOR + 0.12 + 0.3, z, 1.5, 2.5, 'x', mats, tw); wallPanel(tx + 0.95, FLOOR + 0.12 + 0.3, z, 1.5, 2.5, 'x', mats, tw); }
     for (const x of [tx + 1.9, tx - 1.9]) { wallPanel(x, FLOOR + 0.12 + 0.3, 0.95, 1.5, 2.5, 'z', mats, tw); wallPanel(x, FLOOR + 0.12 + 0.3, -0.95, 1.5, 2.5, 'z', mats, tw); }
     box(3.8, 0.2, 3.8, tx, FLOOR + 0.12 + 3.1 + 0.9, 0, mats.wood, tw);
-    const tlr = part(`tower-roof-low-${side}`, `Tower lower roof (${side})`, [s * 8, 3, 0]);
+    const tlr = part(`tower-roof-low-${side}`);
     const lowY = FLOOR + 0.12 + 3.1 + 0.95;
     tlr.add(roof(mats, { cx: tx, cz: 0, hw: 3.55, hd: 3.55, y0: lowY, rise: 1.25, rhw: 1.5, rhd: 1.5, k: 1.2, lift: 0.5, thick: 0.25 }));
-    const tu = part(`tower-upper-${side}`, `Tower upper storey (${side})`, [s * 8, 5, 0]);
+    const tu = part(`tower-upper-${side}`);
     const uy = lowY + 1.4;
     const tup = [[tx - 1.3, 1.3], [tx + 1.3, 1.3], [tx - 1.3, -1.3], [tx + 1.3, -1.3]];
     posts(tup, uy, 1.75, 0.15, mats, tu); brackets(tup, uy + 1.75, 0.9, mats, tu);
@@ -447,13 +439,13 @@ export function createPhoenixHallModel() {
     for (const x of [tx - 1.3, tx + 1.3]) { box(0.2, 1.3, 2.4, x, uy + 0.25, 0, mats.plaster, tu); box(0.05, 0.7, 0.9, x + Math.sign(x - tx) * 0.13, uy + 0.55, 0, mats.green, tu); }
     railing(tx - 1.75, 1.75, tx + 1.75, 1.75, uy - 0.05, mats, tu, 0.7); railing(tx + 1.75, 1.75, tx + 1.75, -1.75, uy - 0.05, mats, tu, 0.7);
     railing(tx + 1.75, -1.75, tx - 1.75, -1.75, uy - 0.05, mats, tu, 0.7); railing(tx - 1.75, -1.75, tx - 1.75, 1.75, uy - 0.05, mats, tu, 0.7);
-    const tur = part(`tower-roof-up-${side}`, `Tower upper roof (${side})`, [s * 8, 8, 0]);
+    const tur = part(`tower-roof-up-${side}`);
     const upr = uy + 1.75 + 0.8;
     tur.add(roof(mats, { cx: tx, cz: 0, hw: 3.0, hd: 3.0, y0: upr, rise: 2.5, rhw: 0, rhd: 0, k: 1.5, lift: 0.7, thick: 0.28 }));
     const hj = houju(mats); hj.position.set(tx, upr + 2.5 - 0.05, 0); hj.scale.setScalar(1.0); tur.add(hj);
 
     /* ---- forward gabled corridor -------------------------------------- */
-    const pc = part(`porch-${side}`, `Gabled corridor (${side})`, [s * 6, 0, 6]);
+    const pc = part(`porch-${side}`);
     const px = tx, z0 = 2.4, z1 = 12.0;
     const pp = [];
     for (let z = z0 + 0.4; z <= z1; z += 2.4) pp.push([px - 1.5, z], [px + 1.5, z]);
@@ -466,7 +458,7 @@ export function createPhoenixHallModel() {
     railing(px - 1.5, z1, px - 1.5, z0 + 0.4, FLOOR + 0.12, mats, pc, 0.95); railing(px + 1.5, z0 + 0.4, px + 1.5, z1, FLOOR + 0.12, mats, pc, 0.95);
     railing(px - 1.5, z1, px + 1.5, z1, FLOOR + 0.12, mats, pc, 0.95);
     box(3.2, 0.3, 0.3, px, FLOOR + 0.12 + 2.55, z1, mats.redFlat, pc);
-    const pr = part(`porch-roof-${side}`, `Gabled roof (${side})`, [s * 6, 3, 6]);
+    const pr = part(`porch-roof-${side}`);
     const prY = FLOOR + 0.12 + 3.1 + 0.9;
     pr.add(roof(mats, { cx: px, cz: 7.5, hw: 2.9, hd: 5.2, y0: prY, rise: 1.9, rhw: 0, rhd: 5.2, k: 1.25, lift: 0.0, skip: [0, 2], thick: 0.26, hipCaps: false }));
     // gable end: white triangle + red kingpost frame + cream bargeboards
@@ -481,12 +473,6 @@ export function createPhoenixHallModel() {
     box(4.2, 0.18, 0.18, px, prY - 0.2, gz - 0.28, mats.redFlat, pr);
   }
 
-  /* ---- ground shadow catcher ------------------------------------------- */
-  const gnd = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), mats.shadow); gnd.rotation.x = -Math.PI / 2; gnd.position.y = -0.02; gnd.receiveShadow = true; root.add(gnd);
-
-  parts.forEach((p) => p.userData.home.copy(p.position));
   root.userData.parts = parts;
-  root.traverse((o) => { if (o.isMesh) o.userData.partRoot = null; });
-  parts.forEach((p) => p.traverse((o) => { if (o.isMesh) o.userData.partRoot = p; }));
   return root;
 }
