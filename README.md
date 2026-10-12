@@ -174,8 +174,9 @@ Next.js 的 `'use client'` 指令。调的时候踩了两个坑：
 
 - **履历** —— 内容在 `src/data/resume.js`（正文英文 / 栏目标题日英并置）。
   每条经历支持 `notes`（要点）与 `skills`（技能标签），技能栏用 `groups` 排标签。
-- **摄影** —— 图片放进 `public/photos/`，在 `src/data/photos.js` 把 `src` 换成路径；
-  没有 `src` 时显示占位色块，画廊结构不变。
+- **摄影** —— 图片放进 `public/photos/`，在 `src/data/photos.js` 加一条；一条一个拍立得，
+  数量跟着列表走。文件名可以带空格（`den haag.jpeg`）——`background-image` 的 `url()`
+  加了引号，不加的话整条声明作废、那张拍立得是空的。`npm run shots` 会逐张验证照片真的加载出来。
 - **足迹** —— `src/overlays/Footprints.jsx` 目前只接通了入口，
   数据建议放 `src/data/travel.js`。
 

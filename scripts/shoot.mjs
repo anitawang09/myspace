@@ -6,6 +6,7 @@ import { chromium } from 'playwright'
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { PHOTOS } from '../src/data/photos.js'
 
 const URL = process.env.URL || 'http://127.0.0.1:5173'
 const OUT = 'shots'
@@ -257,6 +258,29 @@ for (const prof of PROFILES) {
       return { before, after: rail.scrollLeft, overflow: rail.scrollWidth > rail.clientWidth }
     })
     if (!scrolled.overflow || scrolled.after <= scrolled.before) fail('拍立得滑轨滑不动')
+
+    // 每张拍立得的照片都真的加载出来：读计算后的 background-image 再拿去 decode。
+    // 不加引号的 url() 遇到带空格的文件名会让整条声明作废，样式里只剩 none
+    const photos = await page.evaluate(async () => {
+      const tiles = [...document.querySelectorAll('.polaroid__img')]
+      const urls = tiles.map((t) => /url\("?(.*?)"?\)/.exec(getComputedStyle(t).backgroundImage)?.[1] ?? null)
+      const ok = await Promise.all(
+        urls.map((u) =>
+          u
+            ? new Promise((r) => {
+                const im = new Image()
+                im.onload = () => r(im.naturalWidth > 0)
+                im.onerror = () => r(false)
+                im.src = u
+              })
+            : false,
+        ),
+      )
+      return { count: tiles.length, broken: tiles.filter((_, i) => !ok[i]).map((t) => t.nextSibling?.textContent) }
+    })
+    console.log(`  画廊  拍立得=${photos.count}/${PHOTOS.length} 加载失败=${photos.broken.length ? photos.broken.join(',') : '无'}`)
+    if (photos.count !== PHOTOS.length) fail(`拍立得 ${photos.count} 张，photos.js 里有 ${PHOTOS.length} 张`)
+    if (photos.broken.length) fail(`照片没加载出来：${photos.broken.join(', ')}`)
     await page.screenshot({ path: `${OUT}/9-gallery-scrolled.png` })
   }
 

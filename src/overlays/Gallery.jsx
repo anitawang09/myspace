@@ -64,7 +64,8 @@ export default function Gallery({ onClose }) {
               className="polaroid__img"
               style={
                 p.src
-                  ? { backgroundImage: `url(${photoSrc(p.src)})` }
+                  ? // 引号不能省：文件名带空格（den haag.jpeg）时，不加引号的 url() 整条声明作废
+                    { backgroundImage: `url("${photoSrc(p.src)}")` }
                   : { background: `linear-gradient(160deg, ${p.tone[0]}, ${p.tone[1]})` }
               }
             >
@@ -75,7 +76,7 @@ export default function Gallery({ onClose }) {
         ))}
         <div className="rail__end">
           <p>まだ現像中</p>
-          <span>把照片放进 public/photos/，在 src/data/photos.js 填上路径</span>
+          <span>{PHOTOS.length} 枚 · つづく</span>
         </div>
       </div>
     </Overlay>
